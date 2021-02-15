@@ -77,9 +77,8 @@ class CTclCurses {
   bool processStringChar(unsigned char c);
   void processChar(unsigned char c);
 
-  bool setRaw(int fd);
-
-  bool resetRaw(int fd);
+  bool setRaw  ();
+  bool resetRaw();
 
  private:
   CTcl *tcl() const { return tcl_; }
@@ -88,10 +87,12 @@ class CTclCurses {
   static int cllProc    (void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int moveProc   (void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int textProc   (void *, Tcl_Interp *, int, const Tcl_Obj **);
+  static int styleProc  (void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int bgColorProc(void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int fgColorProc(void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int boxProc    (void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int winOpProc  (void *, Tcl_Interp *, int, const Tcl_Obj **);
+  static int rawProc    (void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int doneProc   (void *, Tcl_Interp *, int, const Tcl_Obj **);
 
   StringList getArgs(int objc, const Tcl_Obj **objv) const;

@@ -17,6 +17,7 @@ main(int argc, char **argv)
   using NameValues = std::map<std::string, std::string>;
 
   std::string file;
+  std::string ofile;
 
   bool mouse  = false;
   bool loop   = false;
@@ -37,6 +38,12 @@ main(int argc, char **argv)
         prompt = true;
       else if (arg == "raw")
         raw = true;
+      else if (arg == "ofile") {
+        ++i;
+
+        if (i < argc)
+          ofile = std::string(argv[i]);
+      }
       else if (arg == "var") {
         ++i;
 
@@ -89,15 +96,29 @@ main(int argc, char **argv)
   else if (app.isPrompt())
     app.prompt();
 
+  if (app.result() != "" && ofile != "") {
+    if (ofile[0] != '/') {
+      std::string homeDir = getenv("HOME");
+
+      ofile = homeDir + "/" + ofile;
+    }
+
+    FILE *fp = fopen(ofile.c_str(), "w");
+    if (! fp) return 1;
+
+    fprintf(fp, "%s\n", app.result().c_str());
+
+    fclose(fp);
+  }
+
   return 0;
 }
 
 CTclCurses::
-CTclCurses(bool raw) :
- raw_(raw)
+CTclCurses(bool raw)
 {
-  if (raw_)
-    setRaw(STDIN_FILENO);
+  if (raw)
+    setRaw();
 
   if (mouse_)
     COSRead::write(STDOUT_FILENO, CEscape::DECSET(1002));
@@ -110,10 +131,7 @@ CTclCurses::
     COSRead::write(STDOUT_FILENO, CEscape::DECRST(1002));
 
   if (raw_)
-    resetRaw(STDIN_FILENO);
-
-  if (result() != "")
-    std::cout << result() << "\n";
+    resetRaw();
 }
 
 bool
@@ -133,6 +151,8 @@ init()
     (CTcl::ObjCmdProc) &CTclCurses::moveProc   , (CTcl::ObjCmdData) this);
   tcl_->createObjCommand("text",
     (CTcl::ObjCmdProc) &CTclCurses::textProc   , (CTcl::ObjCmdData) this);
+  tcl_->createObjCommand("style",
+    (CTcl::ObjCmdProc) &CTclCurses::styleProc  , (CTcl::ObjCmdData) this);
   tcl_->createObjCommand("bgcolor",
     (CTcl::ObjCmdProc) &CTclCurses::bgColorProc, (CTcl::ObjCmdData) this);
   tcl_->createObjCommand("fgcolor",
@@ -141,6 +161,8 @@ init()
     (CTcl::ObjCmdProc) &CTclCurses::boxProc    , (CTcl::ObjCmdData) this);
   tcl_->createObjCommand("winop",
     (CTcl::ObjCmdProc) &CTclCurses::winOpProc  , (CTcl::ObjCmdData) this);
+  tcl_->createObjCommand("raw",
+    (CTcl::ObjCmdProc) &CTclCurses::rawProc    , (CTcl::ObjCmdData) this);
   tcl_->createObjCommand("done",
     (CTcl::ObjCmdProc) &CTclCurses::doneProc   , (CTcl::ObjCmdData) this);
 
@@ -176,7 +198,7 @@ clsProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
   std::string op;
 
   if (args.size() > 0)
-    op = args[0];
+    op = CStrUtil::toLower(args[0]);
 
   if      (op == "below")
     COSRead::write(STDOUT_FILENO, CEscape::ED(0));
@@ -200,7 +222,7 @@ cllProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
   std::string op;
 
   if (args.size() > 0)
-    op = args[0];
+    op = CStrUtil::toLower(args[0]);
 
   if      (op == "right")
     COSRead::write(STDOUT_FILENO, CEscape::EL(0));
@@ -241,6 +263,42 @@ textProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
   if (args.size() != 1) return TCL_ERROR;
 
   COSRead::write(STDOUT_FILENO, args[0]);
+
+  return TCL_OK;
+}
+
+int
+CTclCurses::
+styleProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
+{
+  auto *th = (CTclCurses *) clientData;
+  assert(th);
+
+  auto args = th->getArgs(objc, objv);
+  if (args.size() != 1) return TCL_ERROR;
+
+  std::string op = CStrUtil::toLower(args[0]);
+
+  if      (op == "bold")
+    COSRead::write(STDOUT_FILENO, CEscape::SGR(1));
+  else if (op == "dim")
+    COSRead::write(STDOUT_FILENO, CEscape::SGR(2));
+  else if (op == "italic")
+    COSRead::write(STDOUT_FILENO, CEscape::SGR(3));
+  else if (op == "underscore")
+    COSRead::write(STDOUT_FILENO, CEscape::SGR(4));
+  else if (op == "blink")
+    COSRead::write(STDOUT_FILENO, CEscape::SGR(5));
+  else if (op == "invert")
+    COSRead::write(STDOUT_FILENO, CEscape::SGR(7));
+  else if (op == "hidden")
+    COSRead::write(STDOUT_FILENO, CEscape::SGR(8));
+  else if (op == "strikeout")
+    COSRead::write(STDOUT_FILENO, CEscape::SGR(9));
+  else if (op == "doubleunderscore")
+    COSRead::write(STDOUT_FILENO, CEscape::SGR(21));
+  else
+    COSRead::write(STDOUT_FILENO, CEscape::SGR(0));
 
   return TCL_OK;
 }
@@ -319,7 +377,7 @@ winOpProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
   auto args = th->getArgs(objc, objv);
   if (args.size() < 1) return TCL_ERROR;
 
-  std::string op = args[0];
+  std::string op = CStrUtil::toLower(args[0]);
 
   if      (op == "deiconify")
     COSRead::write(STDOUT_FILENO, CEscape::windowOp(CEscape::WindowOp::DEICONIFY));
@@ -390,6 +448,29 @@ winOpProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 
 int
 CTclCurses::
+rawProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
+{
+  auto *th = (CTclCurses *) clientData;
+  assert(th);
+
+  auto args = th->getArgs(objc, objv);
+
+  std::string op;
+
+  if (args.size() > 0)
+    op = CStrUtil::toLower(args[0]);
+
+  if (op == "" || op == "1") {
+    th->setRaw();
+  }
+  else {
+    th->resetRaw();
+  }
+
+  return TCL_OK;
+}
+int
+CTclCurses::
 doneProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 {
   auto *th = (CTclCurses *) clientData;
@@ -421,6 +502,8 @@ void
 CTclCurses::
 loop()
 {
+  if (isDone()) return;
+
   //redraw();
 
   while (true) {
@@ -450,6 +533,8 @@ void
 CTclCurses::
 prompt()
 {
+  if (isDone()) return;
+
   CReadLine readline;
 
   readline.setAutoHistory(true);
@@ -557,7 +642,9 @@ CTclCurses::
 processStringChar(unsigned char c)
 {
   if (c == '') { // control backlash
-    resetRaw(STDIN_FILENO);
+    if (raw_)
+      resetRaw();
+
     exit(1);
   }
 
@@ -817,33 +904,41 @@ drawChar(int row, int col, char c) const
 
 bool
 CTclCurses::
-setRaw(int fd)
+setRaw()
 {
-  delete ios_;
+  if (! raw_) {
+    delete ios_;
 
-  ios_ = new struct termios;
+    ios_ = new struct termios;
 
-  COSPty::set_raw(fd, ios_);
+    COSPty::set_raw(STDOUT_FILENO, ios_);
 
-  COSRead::write(STDOUT_FILENO, CEscape::DECSET(1049) + CEscape::DECRST(12,25));
+    COSRead::write(STDOUT_FILENO, CEscape::DECSET(1049) + CEscape::DECRST(12,25));
+
+    raw_ = true;
+  }
 
   return true;
 }
 
 bool
 CTclCurses::
-resetRaw(int fd)
+resetRaw()
 {
-  if (tcsetattr(fd, TCSAFLUSH, ios_) < 0)
-    return false;
+  if (raw_) {
+    if (tcsetattr(STDOUT_FILENO, TCSAFLUSH, ios_) < 0)
+      return false;
 
-  COSRead::write(STDOUT_FILENO, CEscape::DECRST(1049) + CEscape::DECSET(12,25));
+    COSRead::write(STDOUT_FILENO, CEscape::DECRST(1049) + CEscape::DECSET(12,25));
 
-  COSRead::write(STDOUT_FILENO, CEscape::SGR(0));
+    COSRead::write(STDOUT_FILENO, CEscape::SGR(0));
 
-  delete ios_;
+    delete ios_;
 
-  ios_ = NULL;
+    ios_ = nullptr;
+
+    raw_ = false;
+  }
 
   return true;
 }
