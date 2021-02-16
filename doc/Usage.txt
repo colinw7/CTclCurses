@@ -1,0 +1,14 @@
+CTclCurses [-mouse] [-loop] [-prompt] [-raw] [var <name>=<value> ...] <file>
+
+Commands:
+  cls [below|above]
+  cli [right|left]
+  move <row> <col>
+  text <string>
+  style [bold|dim|italic|underscore|blink|invert|hidden|strikeout|doubleunderscore]
+  bgcolor <color>
+  fgcolor <color>
+  box <row1> <col1> <row2> <col2>
+  winop [deiconify|iconify|pixel_size <h> <w>|raise|lower|char_size <rows> <cols>]
+  raw [0|1]
+  done <return_value>
