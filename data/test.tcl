@@ -1,18 +1,18 @@
 proc keyPress { key } {
   move 0 0
   cll
-  text $key
+  draw_text $key
 }
 
 cls
-box 10 10 20 50
+draw_box 10 10 20 50
 move 12 12
-color 1
-text Hello
+fgcolor 1
+draw_text Hello
 move 13 12
-color 2
-text World
+fgcolor 2
+draw_text World
 move 14 12
-color 3
-text XXX
+fgcolor 3
+draw_text XXX
 move 31 0

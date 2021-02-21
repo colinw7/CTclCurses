@@ -64,7 +64,7 @@ main(int argc, char **argv)
         }
       }
       else if (arg == "h" || arg == "help") {
-        std::cerr << "CTclCurses [-mouse] [-loop] [-prompt] [-raw] "
+        std::cerr << "CTclCurses [-mouse] [-loop] [-prompt] [-raw] [-ofile <output_file>] "
                      "[var <name>=<value> ...] <file>\n";
         exit(0);
       }
@@ -78,7 +78,7 @@ main(int argc, char **argv)
     }
   }
 
-  CTclCurses app(raw);
+  CTclCurses::App app(raw);
 
   app.setLoop  (loop);
   app.setPrompt(prompt);
@@ -96,46 +96,57 @@ main(int argc, char **argv)
   else if (app.isPrompt())
     app.prompt();
 
-  if (app.result() != "" && ofile != "") {
-    if (ofile[0] != '/') {
-      std::string homeDir = getenv("HOME");
+  if (app.result() != "") {
+    if (ofile != "") {
+      if (ofile[0] != '/') {
+        std::string homeDir = getenv("HOME");
 
-      ofile = homeDir + "/" + ofile;
+        ofile = homeDir + "/" + ofile;
+      }
+
+      FILE *fp = fopen(ofile.c_str(), "w");
+      if (! fp) return 1;
+
+      fprintf(fp, "%s\n", app.result().c_str());
+
+      fclose(fp);
     }
+    else {
+      app.setRaw(false);
 
-    FILE *fp = fopen(ofile.c_str(), "w");
-    if (! fp) return 1;
-
-    fprintf(fp, "%s\n", app.result().c_str());
-
-    fclose(fp);
+      std::cout << app.result() << "\n";
+    }
   }
 
   return 0;
 }
 
-CTclCurses::
-CTclCurses(bool raw)
+//------
+
+namespace CTclCurses {
+
+App::
+App(bool raw)
 {
   if (raw)
-    setRaw();
+    setRaw(true);
 
   if (mouse_)
     COSRead::write(STDOUT_FILENO, CEscape::DECSET(1002));
 }
 
-CTclCurses::
-~CTclCurses()
+App::
+~App()
 {
   if (mouse_)
     COSRead::write(STDOUT_FILENO, CEscape::DECRST(1002));
 
   if (raw_)
-    resetRaw();
+    setRaw(false);
 }
 
 bool
-CTclCurses::
+App::
 init()
 {
   tcl_ = new CTcl();
@@ -144,53 +155,91 @@ init()
     return false;
 
   tcl_->createObjCommand("cls",
-    (CTcl::ObjCmdProc) &CTclCurses::clsProc    , (CTcl::ObjCmdData) this);
+    (CTcl::ObjCmdProc) &App::clsProc     , (CTcl::ObjCmdData) this);
   tcl_->createObjCommand("cll",
-    (CTcl::ObjCmdProc) &CTclCurses::cllProc    , (CTcl::ObjCmdData) this);
+    (CTcl::ObjCmdProc) &App::cllProc     , (CTcl::ObjCmdData) this);
   tcl_->createObjCommand("move",
-    (CTcl::ObjCmdProc) &CTclCurses::moveProc   , (CTcl::ObjCmdData) this);
-  tcl_->createObjCommand("text",
-    (CTcl::ObjCmdProc) &CTclCurses::textProc   , (CTcl::ObjCmdData) this);
+    (CTcl::ObjCmdProc) &App::moveProc    , (CTcl::ObjCmdData) this);
+  tcl_->createObjCommand("draw_text",
+    (CTcl::ObjCmdProc) &App::drawTextProc, (CTcl::ObjCmdData) this);
   tcl_->createObjCommand("style",
-    (CTcl::ObjCmdProc) &CTclCurses::styleProc  , (CTcl::ObjCmdData) this);
+    (CTcl::ObjCmdProc) &App::styleProc   , (CTcl::ObjCmdData) this);
   tcl_->createObjCommand("bgcolor",
-    (CTcl::ObjCmdProc) &CTclCurses::bgColorProc, (CTcl::ObjCmdData) this);
+    (CTcl::ObjCmdProc) &App::bgColorProc , (CTcl::ObjCmdData) this);
   tcl_->createObjCommand("fgcolor",
-    (CTcl::ObjCmdProc) &CTclCurses::fgColorProc, (CTcl::ObjCmdData) this);
-  tcl_->createObjCommand("box",
-    (CTcl::ObjCmdProc) &CTclCurses::boxProc    , (CTcl::ObjCmdData) this);
+    (CTcl::ObjCmdProc) &App::fgColorProc , (CTcl::ObjCmdData) this);
+  tcl_->createObjCommand("draw_box",
+    (CTcl::ObjCmdProc) &App::drawBoxProc , (CTcl::ObjCmdData) this);
+  tcl_->createObjCommand("label",
+    (CTcl::ObjCmdProc) &App::labelProc   , (CTcl::ObjCmdData) this);
+  tcl_->createObjCommand("menu",
+    (CTcl::ObjCmdProc) &App::menuProc    , (CTcl::ObjCmdData) this);
+  tcl_->createObjCommand("check",
+    (CTcl::ObjCmdProc) &App::checkProc   , (CTcl::ObjCmdData) this);
   tcl_->createObjCommand("winop",
-    (CTcl::ObjCmdProc) &CTclCurses::winOpProc  , (CTcl::ObjCmdData) this);
+    (CTcl::ObjCmdProc) &App::winOpProc   , (CTcl::ObjCmdData) this);
   tcl_->createObjCommand("raw",
-    (CTcl::ObjCmdProc) &CTclCurses::rawProc    , (CTcl::ObjCmdData) this);
+    (CTcl::ObjCmdProc) &App::rawProc     , (CTcl::ObjCmdData) this);
   tcl_->createObjCommand("done",
-    (CTcl::ObjCmdProc) &CTclCurses::doneProc   , (CTcl::ObjCmdData) this);
+    (CTcl::ObjCmdProc) &App::doneProc    , (CTcl::ObjCmdData) this);
 
   tcl_->createAlias("echo" , "puts"   );
   tcl_->createAlias("color", "fgcolor");
+
+  //---
+
+  bool reset = false;
+
+  if (! isRaw())
+    reset = setRaw(true);
+
+  //---
+
+  if (CEscape::getWindowCharSize(&screenRows_, &screenCols_)) {
+    tcl_->createVar("window_rows", screenRows_);
+    tcl_->createVar("window_cols", screenCols_);
+  }
+
+  if (CEscape::getWindowPixelSize(&screenWidth_, &screenHeight_)) {
+    tcl_->createVar("window_width" , screenWidth_ );
+    tcl_->createVar("window_height", screenHeight_);
+  }
+
+  //---
+
+  std::string res;
+
+  tcl_->eval("proc redrawProc { } { }", res, /*showError*/false);
+
+  //---
+
+  if (reset)
+    setRaw(false);
 
   return true;
 }
 
 void
-CTclCurses::
+App::
 setVar(const std::string &name, const std::string &value)
 {
   tcl_->createVar(name, value);
 }
 
 void
-CTclCurses::
+App::
 exec(const std::string &file)
 {
-  tcl_->eval("source \"" + file + "\"");
+  std::string res;
+
+  tcl_->eval("source \"" + file + "\"", res, /*showError*/true);
 }
 
 int
-CTclCurses::
+App::
 clsProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 {
-  auto *th = (CTclCurses *) clientData;
+  auto *th = static_cast<App *>(clientData);
   assert(th);
 
   auto args = th->getArgs(objc, objv);
@@ -211,10 +260,10 @@ clsProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 }
 
 int
-CTclCurses::
+App::
 cllProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 {
-  auto *th = (CTclCurses *) clientData;
+  auto *th = static_cast<App *>(clientData);
   assert(th);
 
   auto args = th->getArgs(objc, objv);
@@ -235,10 +284,10 @@ cllProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 }
 
 int
-CTclCurses::
+App::
 moveProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 {
-  auto *th = (CTclCurses *) clientData;
+  auto *th = static_cast<App *>(clientData);
   assert(th);
 
   auto args = th->getArgs(objc, objv);
@@ -247,16 +296,16 @@ moveProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
   int row = std::stoi(args[0]);
   int col = std::stoi(args[1]);
 
-  COSRead::write(STDOUT_FILENO, CEscape::CUP(row, col));
+  th->moveTo(row, col);
 
   return TCL_OK;
 }
 
 int
-CTclCurses::
-textProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
+App::
+drawTextProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 {
-  auto *th = (CTclCurses *) clientData;
+  auto *th = static_cast<App *>(clientData);
   assert(th);
 
   auto args = th->getArgs(objc, objv);
@@ -268,10 +317,10 @@ textProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 }
 
 int
-CTclCurses::
+App::
 styleProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 {
-  auto *th = (CTclCurses *) clientData;
+  auto *th = static_cast<App *>(clientData);
   assert(th);
 
   auto args = th->getArgs(objc, objv);
@@ -304,10 +353,10 @@ styleProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 }
 
 int
-CTclCurses::
+App::
 bgColorProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 {
-  auto *th = (CTclCurses *) clientData;
+  auto *th = static_cast<App *>(clientData);
   assert(th);
 
   auto args = th->getArgs(objc, objv);
@@ -326,10 +375,10 @@ bgColorProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 }
 
 int
-CTclCurses::
+App::
 fgColorProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 {
-  auto *th = (CTclCurses *) clientData;
+  auto *th = static_cast<App *>(clientData);
   assert(th);
 
   auto args = th->getArgs(objc, objv);
@@ -347,11 +396,204 @@ fgColorProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
   return TCL_OK;
 }
 
+//---
+
 int
-CTclCurses::
-boxProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
+App::
+labelProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 {
-  auto *th = (CTclCurses *) clientData;
+  auto *th = static_cast<App *>(clientData);
+  assert(th);
+
+  auto args = th->getArgs(objc, objv);
+  if (args.size() != 3) return TCL_ERROR;
+
+  int row = std::stoi(args[0]);
+  int col = std::stoi(args[1]);
+
+  std::string widgetName = "label." + std::to_string(th->numWidgets() + 1);
+
+  auto *label = new Label(th, widgetName, row, col, args[2]);
+
+  th->tcl()->createObjCommand(widgetName,
+    (CTcl::ObjCmdProc) &App::labelWidgetProc, (CTcl::ObjCmdData) label);
+
+  th->addWidget(label);
+
+  th->redraw();
+
+  th->tcl()->setResult(widgetName);
+
+  return TCL_OK;
+}
+
+int
+App::
+labelWidgetProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
+{
+  auto *label = static_cast<Label *>(clientData);
+  assert(label);
+
+  auto args = label->app()->getArgs(objc, objv);
+  if (args.size() < 1) return TCL_ERROR;
+
+  if       (args[0] == "get") {
+    if (args.size() < 2) return TCL_ERROR;
+
+    if (args[1] == "text")
+      label->app()->tcl()->setResult(label->text());
+  }
+  else if (args[0] == "set") {
+    if (args.size() < 3) return TCL_ERROR;
+
+    if (args[1] == "text")
+      label->setText(args[2]);
+  }
+  else {
+    return TCL_ERROR;
+  }
+
+  return TCL_OK;
+}
+
+//---
+
+int
+App::
+menuProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
+{
+  auto *th = static_cast<App *>(clientData);
+  assert(th);
+
+  auto args = th->getArgs(objc, objv);
+  if (args.size() != 3) return TCL_ERROR;
+
+  int row = std::stoi(args[0]);
+  int col = std::stoi(args[1]);
+
+  CTcl::StringList strs;
+
+  if (! th->tcl()->splitList(args[2], strs))
+    return TCL_ERROR;
+
+  std::string widgetName = "menu." + std::to_string(th->numWidgets() + 1);
+
+  auto *menu = new Menu(th, widgetName, row, col, strs);
+
+  th->tcl()->createObjCommand(widgetName,
+    (CTcl::ObjCmdProc) &App::menuWidgetProc, (CTcl::ObjCmdData) menu);
+
+  th->addWidget(menu);
+
+  th->redraw();
+
+  th->tcl()->setResult(widgetName);
+
+  return TCL_OK;
+}
+
+int
+App::
+menuWidgetProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
+{
+  auto *menu = static_cast<Menu *>(clientData);
+  assert(menu);
+
+  auto args = menu->app()->getArgs(objc, objv);
+  if (args.size() < 1) return TCL_ERROR;
+
+  if       (args[0] == "get") {
+    if (args.size() < 2) return TCL_ERROR;
+
+    if      (args[1] == "currentInd")
+      menu->app()->tcl()->setResult(menu->currentInd());
+    else if (args[1] == "currentText")
+      menu->app()->tcl()->setResult(menu->currentText());
+  }
+  else if (args[0] == "set") {
+    if (args.size() < 3) return TCL_ERROR;
+
+    if      (args[1] == "currentInd")
+      menu->setCurrentInd(std::stoi(args[2]));
+    else if (args[1] == "width")
+      menu->setWidth(std::stoi(args[2]));
+    else if (args[1] == "height")
+      menu->setHeight(std::stoi(args[2]));
+  }
+  else {
+    return TCL_ERROR;
+  }
+
+  return TCL_OK;
+}
+
+//---
+
+int
+App::
+checkProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
+{
+  auto *th = static_cast<App *>(clientData);
+  assert(th);
+
+  auto args = th->getArgs(objc, objv);
+  if (args.size() != 2) return TCL_ERROR;
+
+  int row = std::stoi(args[0]);
+  int col = std::stoi(args[1]);
+
+  std::string widgetName = "check." + std::to_string(th->numWidgets() + 1);
+
+  auto *check = new Check(th, widgetName, row, col);
+
+  th->tcl()->createObjCommand(widgetName,
+    (CTcl::ObjCmdProc) &App::checkWidgetProc, (CTcl::ObjCmdData) check);
+
+  th->addWidget(check);
+
+  th->redraw();
+
+  th->tcl()->setResult(widgetName);
+
+  return TCL_OK;
+}
+
+int
+App::
+checkWidgetProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
+{
+  auto *check = static_cast<Check *>(clientData);
+  assert(check);
+
+  auto args = check->app()->getArgs(objc, objv);
+  if (args.size() < 1) return TCL_ERROR;
+
+  if       (args[0] == "get") {
+    if (args.size() < 2) return TCL_ERROR;
+
+    if (args[1] == "checked")
+      check->app()->tcl()->setResult(check->isChecked());
+  }
+  else if (args[0] == "set") {
+    if (args.size() < 3) return TCL_ERROR;
+
+    if (args[1] == "checked")
+      check->setChecked(std::stoi(args[2]));
+  }
+  else {
+    return TCL_ERROR;
+  }
+
+  return TCL_OK;
+}
+
+//---
+
+int
+App::
+drawBoxProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
+{
+  auto *th = static_cast<App *>(clientData);
   assert(th);
 
   auto args = th->getArgs(objc, objv);
@@ -368,10 +610,10 @@ boxProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 }
 
 int
-CTclCurses::
+App::
 winOpProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 {
-  auto *th = (CTclCurses *) clientData;
+  auto *th = static_cast<App *>(clientData);
   assert(th);
 
   auto args = th->getArgs(objc, objv);
@@ -447,10 +689,10 @@ winOpProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 }
 
 int
-CTclCurses::
+App::
 rawProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 {
-  auto *th = (CTclCurses *) clientData;
+  auto *th = static_cast<App *>(clientData);
   assert(th);
 
   auto args = th->getArgs(objc, objv);
@@ -461,19 +703,19 @@ rawProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
     op = CStrUtil::toLower(args[0]);
 
   if (op == "" || op == "1") {
-    th->setRaw();
+    th->setRaw(true);
   }
   else {
-    th->resetRaw();
+    th->setRaw(false);
   }
 
   return TCL_OK;
 }
 int
-CTclCurses::
+App::
 doneProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 {
-  auto *th = (CTclCurses *) clientData;
+  auto *th = static_cast<App *>(clientData);
   assert(th);
 
   auto args = th->getArgs(objc, objv);
@@ -486,11 +728,11 @@ doneProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
   return TCL_OK;
 }
 
-CTclCurses::StringList
-CTclCurses::
+App::StringList
+App::
 getArgs(int objc, const Tcl_Obj **objv) const
 {
-  CTclCurses::StringList args;
+  App::StringList args;
 
   for (int i = 1; i < objc; ++i)
     args.push_back(CTclUtil::stringFromObj((Tcl_Obj *) objv[i]));
@@ -499,12 +741,12 @@ getArgs(int objc, const Tcl_Obj **objv) const
 }
 
 void
-CTclCurses::
+App::
 loop()
 {
   if (isDone()) return;
 
-  //redraw();
+  redraw();
 
   while (true) {
     tcl_->processEvents();
@@ -525,12 +767,26 @@ loop()
 
     if (isDone()) break;
 
-    //redraw();
+    redraw();
   }
 }
 
 void
-CTclCurses::
+App::
+redraw()
+{
+  COSRead::write(STDOUT_FILENO, CEscape::ED(2)); // all
+
+  std::string res;
+
+  tcl_->eval("redrawProc", res, /*showError*/true);
+
+  for (const auto &w : widgets_)
+    w->draw();
+}
+
+void
+App::
 prompt()
 {
   if (isDone()) return;
@@ -559,7 +815,7 @@ prompt()
 }
 
 void
-CTclCurses::
+App::
 processString(const std::string &str)
 {
   inEscape_ = false;
@@ -638,12 +894,12 @@ processString(const std::string &str)
 }
 
 bool
-CTclCurses::
+App::
 processStringChar(unsigned char c)
 {
   if (c == '') { // control backlash
     if (raw_)
-      resetRaw();
+      setRaw(false);
 
     exit(1);
   }
@@ -676,10 +932,14 @@ processStringChar(unsigned char c)
 
     parse.skipChar();
 
+    int n = 0;
+
     while (parse.isDigit()) {
       int i;
 
       parse.readInteger(&i);
+
+      n += 10*n + i;
 
       if (! parse.isChar(';'))
         break;
@@ -687,27 +947,36 @@ processStringChar(unsigned char c)
       parse.skipChar();
     }
 
-    if (! parse.isAlpha())
+    if (parse.isAlpha()) {
+      char c1 = parse.getCharAt();
+
+      if      (c1 == 'A') { // up
+        data.type = CKEY_TYPE_Up;
+        data.text = "up";
+      }
+      else if (c1 == 'B') { // down
+        data.type = CKEY_TYPE_Down;
+        data.text = "down";
+      }
+      else if (c1 == 'C') { // right
+        data.type = CKEY_TYPE_Right;
+        data.text = "right";
+      }
+      else if (c1 == 'D') { // left
+        data.type = CKEY_TYPE_Left;
+        data.text = "left";
+      }
+      else if (c1 == 'F') { // end
+        data.type = CKEY_TYPE_End;
+        data.text = "end";
+      }
+      else if (c1 == 'H') { // home
+        data.type = CKEY_TYPE_Home;
+        data.text = "home";
+      }
+    }
+    else
       return false;
-
-    char c1 = parse.getCharAt();
-
-    if      (c1 == 'A') { // up
-      data.type = CKEY_TYPE_Up;
-      data.text = "up";
-    }
-    else if (c1 == 'B') { // down
-      data.type = CKEY_TYPE_Down;
-      data.text = "down";
-    }
-    else if (c1 == 'C') { // right
-      data.type = CKEY_TYPE_Right;
-      data.text = "right";
-    }
-    else if (c1 == 'D') { // left
-      data.type = CKEY_TYPE_Left;
-      data.text = "left";
-    }
 
     inEscape_ = false;
 
@@ -718,7 +987,7 @@ processStringChar(unsigned char c)
 }
 
 void
-CTclCurses::
+App::
 processChar(unsigned char c)
 {
   KeyData data;
@@ -864,16 +1133,55 @@ processChar(unsigned char c)
 }
 
 void
-CTclCurses::
+App::
 keyPress(const KeyData &data)
 {
-  tcl_->eval("keyPress " + std::to_string(int(data.type)) + " {" + data.text + "}");
+  if      (data.text == "tab") {
+    int pos = 0;
+
+    for (auto *w : focusWidgets_) {
+      if (w->hasFocus())
+        break;
+
+      ++pos;
+    }
+
+    int focusPos = pos;
+
+    ++focusPos;
+
+    if (focusPos >= int(focusWidgets_.size()))
+      focusPos = 0;
+
+    pos = 0;
+
+    for (auto *w : focusWidgets_) {
+      w->setFocus(pos == focusPos);
+
+      ++pos;
+    }
+
+    redraw();
+  }
+  else if (data.text == "escape") {
+    setDone(true);
+
+    return;
+  }
+
+  for (auto *w : focusWidgets_)
+    w->keyPress(data);
+
+  std::string res;
+
+  tcl_->eval("keyPressProc " + std::to_string(int(data.type)) + " {" + data.text + "}",
+              res, /*showError*/true);
 }
 
 //---
 
 void
-CTclCurses::
+App::
 drawBox(int r1, int c1, int r2, int c2) const
 {
   drawChar(r1, c1, '+');
@@ -893,52 +1201,307 @@ drawBox(int r1, int c1, int r2, int c2) const
 }
 
 void
-CTclCurses::
+App::
 drawChar(int row, int col, char c) const
 {
-  COSRead::write(STDOUT_FILENO, CEscape::CUP(row, col));
+  moveTo(row, col);
+
   COSRead::write(STDOUT_FILENO, c);
+}
+
+void
+App::
+moveTo(int row, int col) const
+{
+  COSRead::write(STDOUT_FILENO, CEscape::CUP(row, col));
 }
 
 //---
 
 bool
-CTclCurses::
-setRaw()
+App::
+setRaw(bool b)
 {
-  if (! raw_) {
-    delete ios_;
+  if (b) {
+    if (! raw_) {
+      delete ios_;
 
-    ios_ = new struct termios;
+      ios_ = new struct termios;
 
-    COSPty::set_raw(STDOUT_FILENO, ios_);
+      COSPty::set_raw(STDOUT_FILENO, ios_);
 
-    COSRead::write(STDOUT_FILENO, CEscape::DECSET(1049) + CEscape::DECRST(12,25));
+      COSRead::write(STDOUT_FILENO, CEscape::DECSET(1049) + CEscape::DECRST(12,25));
 
-    raw_ = true;
+      raw_ = true;
+    }
+  }
+  else {
+    if (raw_) {
+      if (tcsetattr(STDOUT_FILENO, TCSAFLUSH, ios_) < 0)
+        return false;
+
+      COSRead::write(STDOUT_FILENO, CEscape::DECRST(1049) + CEscape::DECSET(12,25));
+
+      COSRead::write(STDOUT_FILENO, CEscape::SGR(0));
+
+      delete ios_;
+
+      ios_ = nullptr;
+
+      raw_ = false;
+    }
   }
 
   return true;
 }
 
-bool
-CTclCurses::
-resetRaw()
+//---
+
+void
+App::
+addWidget(Widget *w)
 {
-  if (raw_) {
-    if (tcsetattr(STDOUT_FILENO, TCSAFLUSH, ios_) < 0)
-      return false;
+  widgets_.push_back(w);
 
-    COSRead::write(STDOUT_FILENO, CEscape::DECRST(1049) + CEscape::DECSET(12,25));
+  if (w->canFocus()) {
+    if (focusWidgets_.empty())
+      w->setFocus(true);
 
+    focusWidgets_.push_back(w);
+  }
+}
+
+//------
+
+void
+Label::
+setText(const std::string &str)
+{
+  text_ = str;
+
+  app_->redraw();
+}
+
+void
+Label::
+draw() const
+{
+  app_->moveTo(row_, col_);
+
+  COSRead::write(STDOUT_FILENO, text_);
+}
+
+//---
+
+Menu::
+Menu(App *app, const std::string &name, int row, int col, const StringList &strs) :
+ Widget(app, name), row_(row), col_(col), strs_(strs)
+{
+  width_ = 0;
+
+  for (const auto &str : strs_)
+    width_ = std::max(width_, int(str.size()));
+
+  height_ = strs_.size();
+
+  n_ = strs_.size();
+}
+
+void
+Menu::
+setCurrentInd(int i)
+{
+  if (i < 0 || i >= int(strs_.size()))
+    return;
+
+  current_ = i;
+
+  app_->redraw();
+}
+
+std::string
+Menu::
+currentText() const
+{
+  if (current_ < 0 || current_ >= int(strs_.size()))
+    return "";
+
+  return strs_[current_];
+}
+
+void
+Menu::
+draw() const
+{
+  int focusColor = 5;
+
+  if (hasFocus())
+    COSRead::write(STDOUT_FILENO, CEscape::SGR(30 + focusColor));
+  else
     COSRead::write(STDOUT_FILENO, CEscape::SGR(0));
 
-    delete ios_;
+  app_->drawBox(row_, col_, row_ + height_ + 1, col_ + width_ + 5);
 
-    ios_ = nullptr;
+  COSRead::write(STDOUT_FILENO, CEscape::SGR(0));
 
-    raw_ = false;
+  int cursorColor = 3;
+
+  int y = 0;
+
+  for (int i = 0; i < n_; ++i) {
+    if (i < -yOffset_)
+      continue;
+
+    if (y >= height_)
+      break;
+
+    const auto &str = strs_[y - yOffset_];
+
+    app_->moveTo(y + row_ + 1, col_ + 1);
+
+    if (i == current_) {
+      if (hasFocus())
+        COSRead::write(STDOUT_FILENO, CEscape::SGR(30 + cursorColor));
+      else
+        COSRead::write(STDOUT_FILENO, CEscape::SGR(0));
+
+      COSRead::write(STDOUT_FILENO, "->");
+
+      COSRead::write(STDOUT_FILENO, CEscape::SGR(0));
+    }
+    else
+      COSRead::write(STDOUT_FILENO, "  ");
+
+    app_->moveTo(y + row_ + 1, col_ + 4);
+
+    COSRead::write(STDOUT_FILENO, str);
+
+    ++y;
   }
 
-  return true;
+  app_->moveTo(y + row_ + 3, 0);
+}
+
+void
+Menu::
+keyPress(const KeyData &data)
+{
+  if (! hasFocus())
+    return;
+
+  std::string res;
+
+  if      (data.text == "home") {
+    if (current_ <= 0) return;
+
+    current_ = 0;
+
+    app_->redraw();
+
+    app_->tcl()->eval("widgetChangedProc {" + name() + "}", res, /*showError*/true);
+  }
+  else if (data.text == "end") {
+    if (current_ >= int(n_ - 1)) return;
+
+    current_ = n_ - 1;
+
+    app_->redraw();
+
+    app_->tcl()->eval("widgetChangedProc {" + name() + "}", res, /*showError*/true);
+  }
+  else if (data.text == "down") {
+    if (current_ >= int(n_ - 1)) return;
+
+    ++current_;
+
+    if (current_ + yOffset_ + 1 > height_) {
+      if (yOffset_ > height_ - n_)
+        --yOffset_;
+    }
+
+    app_->redraw();
+
+    app_->tcl()->eval("widgetChangedProc {" + name() + "}", res, /*showError*/true);
+  }
+  else if (data.text == "up") {
+    if (current_ <= 0) return;
+
+    --current_;
+
+    if (current_ + yOffset_ - 1 < 0) {
+      if (yOffset_ < 0)
+        ++yOffset_;
+    }
+
+    app_->redraw();
+
+    app_->tcl()->eval("widgetChangedProc {" + name() + "}", res, /*showError*/true);
+  }
+  else if (data.text == "return") {
+    //if (current_ >= 0 && current_ <= int(n_ - 1))
+    //  app_->setResult(strs_[current_]);
+    //app_->setDone(true);
+
+    app_->tcl()->eval("widgetExecProc {" + name() + "}", res, /*showError*/true);
+  }
+}
+
+//---
+
+Check::
+Check(App *app, const std::string &name, int row, int col) :
+ Widget(app, name), row_(row), col_(col)
+{
+}
+
+void
+Check::
+setChecked(bool b)
+{
+  checked_ = b;
+
+  app_->redraw();
+}
+
+void
+Check::
+draw() const
+{
+  int focusColor = 5;
+
+  if (hasFocus())
+    COSRead::write(STDOUT_FILENO, CEscape::SGR(30 + focusColor));
+  else
+    COSRead::write(STDOUT_FILENO, CEscape::SGR(0));
+
+  app_->drawBox(row_, col_, row_ + 2, col_ + 2);
+
+  COSRead::write(STDOUT_FILENO, CEscape::SGR(0));
+
+  app_->moveTo(row_ + 1, col_ + 1);
+
+  if (checked_)
+    COSRead::write(STDOUT_FILENO, "x");
+}
+
+void
+Check::
+keyPress(const KeyData &data)
+{
+  if (! hasFocus())
+    return;
+
+  std::string res;
+
+  if (data.text == "return" || data.text == " ") {
+    checked_ = ! checked_;
+
+    app_->tcl()->eval("widgetChangedProc {" + name() + "}", res, /*showError*/true);
+
+    app_->redraw();
+  }
+}
+
+//------
+
 }

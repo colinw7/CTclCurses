@@ -22,10 +22,10 @@ foreach dir $dirs {
   set len [expr {max($len, $len1)}]
 }
 
-proc keyPress { key name } {
+proc keyPressProc { key name } {
   #move 40 0
   #cll
-  #text "$key $name"
+  #draw_text "$key $name"
 
   if       {$name == "down"} {
     if {$::current < [expr {$::n - 1}]} {
@@ -62,24 +62,24 @@ proc redraw { } {
 
   #move 39 0
   #cll
-  #text "$::current"
+  #draw_text "$::current"
 
-  box $::row1 $::col1 $::row2 $::col2
+  draw_box $::row1 $::col1 $::row2 $::col2
 
   move [expr $::current + 2] 3
 
-  color 3
+  fgcolor 3
 
-  text "->"
+  draw_text "->"
 
   set ::row 2
 
   foreach dir $::dirs {
     move $::row $::col
 
-    color -1
+    fgcolor -1
 
-    text $dir
+    draw_text $dir
 
     incr ::row
   }
@@ -88,9 +88,9 @@ proc redraw { } {
 
   move $::row $::col
 
-  color 2
+  fgcolor 2
 
-  text "$::n directories match"
+  draw_text "$::n directories match"
 }
 
 redraw

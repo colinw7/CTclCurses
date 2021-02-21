@@ -1,3 +1,5 @@
 #!/bin/csh -f
 
-CTclCurses -var pattern=$* cdn.tcl -loop -raw
+/home/colinw/bin/CTclCurses -var pattern=$* /home/colinw/dev/script/cdn.tcl -loop -ofile .cdn
+
+exit 0
