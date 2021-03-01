@@ -117,6 +117,7 @@ namespace CEscape {
 
   bool decodeWindowOp(const std::string &str, WindowOp &op, std::string &arg1, std::string &arg2);
 
+  std::string osc();
   std::string oscIconWindowTitle(const std::string &str);
   std::string oscIconTitle(const std::string &str);
   std::string oscWindowTitle(const std::string &str);
@@ -126,6 +127,8 @@ namespace CEscape {
   std::string oscBg(const std::string &str);
   std::string oscCursorColor(const std::string &str);
   std::string oscFont(const std::string &str);
+
+  std::string st();
 
   std::string DECSC();
   std::string DECRC();
@@ -172,8 +175,17 @@ namespace CEscape {
   std::string RM(int n=-1);
   std::string DECRST(int n=-1);
   std::string DECRST(int n1, int n2);
+
+  // SGR general (single number)
   std::string SGR(int n=-1);
-  std::string SGR(int n, int r, int g, int b);
+  // SGR background color (color index or rgb)
+  std::string SGR_bg(int n);
+  std::string SGR_bg(int r, int g, int b);
+  // SGR foreground color (color index or rgb)
+  std::string SGR_fg(int n);
+  std::string SGR_fg(int r, int g, int b);
+//std::string SGR(int n, int r, int g, int b);
+
   std::string DSR(int n=-1);
   std::string DECDSR(int n=-1);
   std::string DECSTR();

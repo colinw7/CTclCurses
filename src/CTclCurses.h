@@ -1,6 +1,7 @@
 #ifndef CTclCurses_H
 #define CTclCurses_H
 
+#include <CTclUtil.h>
 #include <CKeyType.h>
 #include <string>
 #include <vector>
@@ -28,6 +29,20 @@ struct MouseData {
 
 //---
 
+class App;
+
+class Tcl : public CTcl {
+ public:
+  Tcl(App *app) :
+   app_(app) {
+  }
+
+  virtual void outputError(const std::string &msg) override;
+
+ private:
+  App* app_ { nullptr };
+};
+
 class App {
  public:
   using StringList = std::vector<std::string>;
@@ -38,7 +53,7 @@ class App {
 
   //---
 
-  CTcl *tcl() const { return tcl_; }
+  Tcl *tcl() const { return tcl_; }
 
   bool mouse() const { return mouse_; }
   void setMouse(bool b) { mouse_ = b; }
@@ -66,6 +81,7 @@ class App {
   //---
 
   bool init();
+  void term();
 
   void setVar(const std::string &name, const std::string &value);
 
@@ -86,11 +102,18 @@ class App {
 
   //---
 
+  void moveTo(int row, int col) const;
+
+  void writeText(const char *text) const;
+
   void drawBox(int r1, int c1, int r2, int c2) const;
+  void fillBox(int r1, int c1, int r2, int c2) const;
 
   void drawChar(int row, int col, char c) const;
 
-  void moveTo(int row, int col) const;
+  void clearStyle();
+
+  void outputError(const std::string &msg);
 
   //---
 
@@ -122,6 +145,10 @@ class App {
   static int menuWidgetProc (void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int checkProc      (void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int checkWidgetProc(void *, Tcl_Interp *, int, const Tcl_Obj **);
+  static int inputProc      (void *, Tcl_Interp *, int, const Tcl_Obj **);
+  static int inputWidgetProc(void *, Tcl_Interp *, int, const Tcl_Obj **);
+  static int boxProc        (void *, Tcl_Interp *, int, const Tcl_Obj **);
+  static int boxWidgetProc  (void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int winOpProc      (void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int rawProc        (void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int doneProc       (void *, Tcl_Interp *, int, const Tcl_Obj **);
@@ -131,7 +158,7 @@ class App {
  private:
   using Widgets = std::vector<Widget *>;
 
-  CTcl*       tcl_    { nullptr };
+  Tcl*        tcl_    { nullptr };
   bool        raw_    { false };
   bool        mouse_  { false };
   bool        loop_   { false };
@@ -152,6 +179,8 @@ class App {
 
   Widgets widgets_;
   Widgets focusWidgets_;
+
+  std::string errorMsg_;
 };
 
 //---
@@ -286,6 +315,88 @@ class Check : public Widget {
   int  row_     { 0 };
   int  col_     { 0 };
   bool checked_ { false };
+};
+
+//---
+
+class Input : public Widget {
+ public:
+  using StringList = std::vector<std::string>;
+
+ public:
+  Input(App *app, const std::string &name, int row, int col);
+
+  bool canFocus() const override { return true; }
+
+  //---
+
+  int row() const { return row_; }
+  void setRow(int i) { row_ = i; }
+
+  int col() const { return col_; }
+  void setCol(int i) { col_ = i; }
+
+  int width() const { return width_; }
+  void setWidth(int i);
+
+  const std::string &text() const { return text_; }
+  void setText(const std::string &s);
+
+  int cursorPos() const { return cursorPos_; }
+  void setCursorPos(int i);
+
+  //---
+
+  void draw() const override;
+
+  void keyPress(const KeyData &data) override;
+
+ private:
+  int         row_       { 0 };
+  int         col_       { 0 };
+  int         width_     { 32 };
+  std::string text_;
+  int         cursorPos_ { 0 };
+};
+
+//---
+
+class Box : public Widget {
+ public:
+  using StringList = std::vector<std::string>;
+
+ public:
+  Box(App *app, const std::string &name, int row, int col, int width, int height);
+
+  bool canFocus() const override { return true; }
+
+  //---
+
+  int row() const { return row_; }
+  void setRow(int i) { row_ = i; }
+
+  int col() const { return col_; }
+  void setCol(int i) { col_ = i; }
+
+  int width() const { return width_; }
+  void setWidth(int i);
+
+  int height() const { return height_; }
+  void setHeight(int i);
+
+  const std::string &fill() const { return fill_; }
+  void setFill(const std::string &s);
+
+  //---
+
+  void draw() const override;
+
+ private:
+  int         row_    { 0 };
+  int         col_    { 0 };
+  int         width_  { 1 };
+  int         height_ { 1 };
+  std::string fill_;
 };
 
 }

@@ -1,3 +1,5 @@
++ color palette browser (named color, palette, rgb, ...)
+  https://github.com/joowani/colorpedia
 + menu object and instance command
 + track state (focus, position,..) and allow query of current value ...
 + tab focus between objects (test with two menus)

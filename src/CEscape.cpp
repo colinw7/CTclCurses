@@ -596,6 +596,13 @@ decodeWindowOp(const std::string &str, WindowOp &op, std::string &arg1, std::str
 
 std::string
 CEscape::
+osc()
+{
+  return OSC_s;
+}
+
+std::string
+CEscape::
 oscIconWindowTitle(const std::string &str)
 {
   return OSC_s "0;" + str + ST_s;
@@ -655,6 +662,13 @@ CEscape::
 oscFont(const std::string &str)
 {
   return OSC_s "50;" + str + ST_s;
+}
+
+std::string
+CEscape::
+st()
+{
+  return ST_s;
 }
 
 //-----------
@@ -1065,12 +1079,44 @@ SGR(int n)
     return CSI(CStrUtil::toString(n) + "m");
 }
 
+#if 0
 std::string
 CEscape::
 SGR(int n, int r, int g, int b)
 {
   return CSI(CStrUtil::toString(n) + ";" + CStrUtil::toString(r) + ";" +
              CStrUtil::toString(g) + ";" + CStrUtil::toString(b) + "m");
+}
+#endif
+
+std::string
+CEscape::
+SGR_fg(int n)
+{
+  return CSI("38;5;" + CStrUtil::toString(n) + "m");
+}
+
+std::string
+CEscape::
+SGR_fg(int r, int g, int b)
+{
+  return CSI("38;2;" + CStrUtil::toString(r) + ";" + CStrUtil::toString(g) + ";" +
+             CStrUtil::toString(b) + "m");
+}
+
+std::string
+CEscape::
+SGR_bg(int n)
+{
+  return CSI("48;5;" + CStrUtil::toString(n) + "m");
+}
+
+std::string
+CEscape::
+SGR_bg(int r, int g, int b)
+{
+  return CSI("48;2;" + CStrUtil::toString(r) + ";" + CStrUtil::toString(g) + ";" +
+             CStrUtil::toString(b) + "m");
 }
 
 std::string
@@ -1697,10 +1743,15 @@ stringToOptEscape(const std::string &str)
 
         if (parseInteger(words, 2, &r, true) &&
             parseInteger(words, 3, &g, true) &&
-            parseInteger(words, 4, &b, true))
-          return SGR(i1,r,g,b);
-
-        return SGR(i1);
+            parseInteger(words, 4, &b, true)) {
+          if (i1 == 38)
+            return SGR_fg(r, g, b);
+          else
+            return SGR_bg(r, g, b);
+          //return SGR(i1, r, g, b);
+        }
+        else
+          return SGR(i1);
       }
       else
         return SGR(i1);

@@ -16,10 +16,10 @@ proc redrawProc { } {
 proc keyPressProc { key name } {
 }
 
-proc widgetChangedProc { name } {
+proc menuIndexChangedProc { name } {
 }
 
-proc widgetExecProc { name } {
+proc menuExecProc { name } {
   done $name
 }
 

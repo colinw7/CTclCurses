@@ -3,7 +3,7 @@ cls
 proc keyPressProc { args } {
 }
 
-proc widgetChangedProc { name } {
+proc menuIndexChangedProc { name } {
   set sync [$::check1 get checked]
 
   if {$sync} {
@@ -15,7 +15,7 @@ proc widgetChangedProc { name } {
   }
 }
 
-proc widgetExecProc { name } {
+proc menuExecProc { name } {
   set text1 [$::menu1 get currentText]
   set text2 [$::menu2 get currentText]
 
@@ -30,4 +30,4 @@ set menu2 [menu 2 22 $strs2]
 
 set check1 [check 15 10]
 
-label [label 16 3 Sync]
+set label1 [label 16 3 Sync]

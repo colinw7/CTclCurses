@@ -31,6 +31,7 @@ CPPFLAGS = \
 -I../../CEscape/include \
 -I../../CFile/include \
 -I../../CStrParse/include \
+-I../../CMath/include \
 -I../../CStrUtil/include \
 -I../../CUtil/include \
 -I../../COS/include \
@@ -39,10 +40,14 @@ CPPFLAGS = \
 LFLAGS = \
 -L../../CReadLine/lib \
 -L../../CFile/lib \
+-L../../CRGBName/lib \
+-L../../CMath/lib \
 -L../../CStrUtil/lib \
 -L../../COS/lib \
 -lCReadLine \
 -lCFile \
+-lCRGBName \
+-lCMath \
 -lCStrUtil \
 -lCOS \
 -ltcl -lreadline -lcurses
