@@ -28,7 +28,6 @@ CPPFLAGS = \
 -I. \
 -I../../CReadLine/include \
 -I../../CHistory/include \
--I../../CEscape/include \
 -I../../CFile/include \
 -I../../CStrParse/include \
 -I../../CMath/include \

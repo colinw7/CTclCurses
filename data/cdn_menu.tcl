@@ -10,12 +10,6 @@ if       {$n == 0} {
   return
 }
 
-proc redrawProc { } {
-}
-
-proc keyPressProc { key name } {
-}
-
 proc menuIndexChangedProc { name } {
 }
 

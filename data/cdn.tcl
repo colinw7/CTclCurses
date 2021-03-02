@@ -23,19 +23,13 @@ foreach dir $dirs {
 }
 
 proc keyPressProc { key name } {
-  #move 40 0
-  #cll
-  #draw_text "$key $name"
-
   if       {$name == "down"} {
     if {$::current < [expr {$::n - 1}]} {
       incr ::current
-      redraw
     }
   } elseif {$name == "up"} {
     if {$::current > 0} {
       incr ::current -1
-      redraw
     }
   } elseif {$name == "return"} {
     set res [lindex $::dirs $::current]
@@ -57,12 +51,8 @@ set col1 1
 set row2 [expr {$n + 2}]
 set col2 [expr {$len + 6}]
 
-proc redraw { } {
+proc redrawProc { } {
   cls
-
-  #move 39 0
-  #cll
-  #draw_text "$::current"
 
   draw_box $::row1 $::col1 $::row2 $::col2
 
@@ -92,5 +82,3 @@ proc redraw { } {
 
   draw_text "$::n directories match"
 }
-
-redraw

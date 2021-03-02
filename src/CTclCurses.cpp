@@ -1439,19 +1439,19 @@ processChar(unsigned char c)
 
   switch (c) {
     case 0     : { data.type = CKEY_TYPE_NUL         ; break; }
-    case ''  : { data.type = CKEY_TYPE_SOH         ; break; }
-    case ''  : { data.type = CKEY_TYPE_STX         ; break; }
-    case ''  : { data.type = CKEY_TYPE_ETX         ; break; }
-    case ''  : { data.type = CKEY_TYPE_EOT         ; break; }
-    case ''  : { data.type = CKEY_TYPE_ENQ         ; break; }
-    case ''  : { data.type = CKEY_TYPE_ACK         ; break; }
+    case ''  : { data.type = CKEY_TYPE_SOH         ; data.text = "line_begin"; break; }
+    case ''  : { data.type = CKEY_TYPE_STX         ; data.text = "line_left" ; break; }
+    case ''  : { data.type = CKEY_TYPE_ETX         ; data.text = "cancel"    ; break; }
+    case ''  : { data.type = CKEY_TYPE_EOT         ; data.text = "line_del"  ; break; }
+    case ''  : { data.type = CKEY_TYPE_ENQ         ; data.text = "line_end"  ; break; }
+    case ''  : { data.type = CKEY_TYPE_ACK         ; data.text = "line_right"; break; }
     case ''  : { data.type = CKEY_TYPE_BEL         ; break; }
-    case ''  : { data.type = CKEY_TYPE_BackSpace   ; data.text = "backspace"; break; }
-    case '\011': { data.type = CKEY_TYPE_TAB         ; data.text = "tab"      ; break; }
-    case '\012': { data.type = CKEY_TYPE_LineFeed    ; data.text = "lf"       ; break; }
-    case ''  : { data.type = CKEY_TYPE_Clear       ; data.text = "clear"    ; break; }
-    case ''  : { data.type = CKEY_TYPE_FF          ; data.text = "ff"       ; break; }
-    case '\015': { data.type = CKEY_TYPE_Return      ; data.text = "return"   ; break; }
+    case ''  : { data.type = CKEY_TYPE_BackSpace   ; data.text = "backspace" ; break; }
+    case '\011': { data.type = CKEY_TYPE_TAB         ; data.text = "tab"       ; break; }
+    case '\012': { data.type = CKEY_TYPE_LineFeed    ; data.text = "lf"        ; break; }
+    case ''  : { data.type = CKEY_TYPE_Clear       ; data.text = "line_clear"; break; }
+    case ''  : { data.type = CKEY_TYPE_FF          ; data.text = "ff"        ; break; }
+    case '\015': { data.type = CKEY_TYPE_Return      ; data.text = "return"    ; break; }
     case ''  : { data.type = CKEY_TYPE_SO          ; break; }
     case ''  : { data.type = CKEY_TYPE_SI          ; break; }
     case ''  : { data.type = CKEY_TYPE_DLE         ; break; }
@@ -1567,7 +1567,7 @@ processChar(unsigned char c)
     case '|'   : { data.type = CKEY_TYPE_Bar         ; break; }
     case '}'   : { data.type = CKEY_TYPE_BraceRight  ; break; }
 
-    case 0x7f  : { data.type = CKEY_TYPE_DEL         ; break; }
+    case 0x7f  : { data.type = CKEY_TYPE_DEL         ; data.text = "del";  break; }
     default    : {                                     break; }
   }
 
@@ -2094,17 +2094,52 @@ keyPress(const KeyData &data)
       app_->redraw();
     }
   }
-  else if (data.text == "left") {
-    if (cursorPos_ > 0)
+  else if (data.text == "del" || data.text == "line_del") {
+    if (cursorPos_ < int(text_.length())) {
+      auto lhs = text_.substr(0, cursorPos_);
+      auto rhs = (cursorPos_ + 1 < int(text_.length()) ? text_.substr(cursorPos_ + 1) : "");
+
+      text_ = lhs + rhs;
+
+      app_->redraw();
+    }
+  }
+  else if (data.text == "line_clear") {
+    if (cursorPos_ < int(text_.length())) {
+      auto lhs = text_.substr(0, cursorPos_);
+
+      text_ = lhs;
+
+      app_->redraw();
+    }
+  }
+  else if (data.text == "line_begin") {
+    if (cursorPos_ > 0) {
+      cursorPos_ = 0;
+
+      app_->redraw();
+    }
+  }
+  else if (data.text == "line_end") {
+    if (cursorPos_ < int(text_.length())) {
+      cursorPos_ = int(text_.length());
+
+      app_->redraw();
+    }
+  }
+  else if (data.text == "left" || data.text == "line_left") {
+    if (cursorPos_ > 0) {
       --cursorPos_;
 
-    app_->redraw();
+      app_->redraw();
+    }
   }
-  else if (data.text == "right") {
-    if (cursorPos_ < int(text_.length()))
+  else if (data.text == "right" || data.text == "line_right") {
+    if (cursorPos_ < int(text_.length())) {
       ++cursorPos_;
 
-    app_->redraw();
+      app_->redraw();
+    }
   }
   else if (data.text == "return") {
     std::string res;
