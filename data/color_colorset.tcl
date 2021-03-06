@@ -1,22 +1,29 @@
-cls
+proc redrawProc { } {
+  cls
 
-set colorsets {red pink purple deep_purple indigo blue light_blue cyan teal green light_green lime yellow amber orange deep_orange brown grey blue_grey}
+  set colorsets {red pink purple deep_purple indigo blue light_blue cyan teal green light_green lime yellow amber orange deep_orange brown grey blue_grey}
 
-set r 1
+  set r 1
 
-foreach colorset $colorsets {
-  set n 0
+  foreach colorset $colorsets {
+    set n 0
 
-  for {set c 1} {$c <= 48} {incr c 3} {
-    bgcolor colorset $colorset $n
+    for {set c 1} {$c <= 48} {incr c 3} {
+      # bgcolor colorset $colorset $n
+      fgcolor colorset $colorset $n
 
-    move $r $c
-    draw_text [format "%02d" $n]
+      move $r $c
+      draw_text [format "%02d" $n]
 
-    incr n
+      incr n
+    }
+
+    incr r
   }
 
-  incr r
+  move 24 0
+
+  bgcolor -1
 }
 
-move 24 0
+redrawProc

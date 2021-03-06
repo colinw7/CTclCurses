@@ -3,6 +3,15 @@
 #include <CDir.h>
 #include <COSRead.h>
 #include <CStrUtil.h>
+#include <cassert>
+
+namespace {
+  int s_readResultSecs  = 1;
+  int s_readResultMSecs = 0;
+
+  bool  s_logResult = false;
+  FILE* s_logFile   = nullptr;
+}
 
 // Escape Codes as String
 #define CTRL_A_s ""
@@ -1330,6 +1339,7 @@ DECRQLP(int n)
   return CSI(CStrUtil::toString(n) + "'|");
 }
 
+// set/reset inverse video
 std::string
 CEscape::
 DECSCNM(bool b)
@@ -2205,7 +2215,6 @@ CEscape::
 getWindowCharSize(int *rows, int *cols)
 {
   // get window char size
-
   COSRead::write(0, CEscape::windowOpReportCharSize().c_str());
 
   std::string result = readResult();
@@ -2215,7 +2224,11 @@ getWindowCharSize(int *rows, int *cols)
   if (parseEscape(result, args)) {
     uint num_args = args.size();
 
-    if (num_args == 3 && CStrUtil::isInteger(args[0]) && CStrUtil::isInteger(args[1])) {
+    // CSI 8 ; <r> ; <c> t
+    if (num_args == 3 && CStrUtil::isInteger(args[0]) &&
+        CStrUtil::isInteger(args[1]) && CStrUtil::isInteger(args[2])) {
+      int t = CStrUtil::toInteger(args[0]); if (t != 8) return false;
+
       *rows = CStrUtil::toInteger(args[1]);
       *cols = CStrUtil::toInteger(args[2]);
 
@@ -2231,7 +2244,6 @@ CEscape::
 getWindowPixelSize(int *width, int *height)
 {
   // get window pixel size
-
   COSRead::write(0, CEscape::windowOpReportPixelSize().c_str());
 
   std::string result = readResult();
@@ -2241,9 +2253,39 @@ getWindowPixelSize(int *width, int *height)
   if (parseEscape(result, args)) {
     uint num_args = args.size();
 
-    if (num_args == 3 && CStrUtil::isInteger(args[0]) && CStrUtil::isInteger(args[1])) {
+    // CSI 4 ; <h> ; <w> t
+    if (num_args == 3 && CStrUtil::isInteger(args[0]) &&
+        CStrUtil::isInteger(args[1]) && CStrUtil::isInteger(args[2])) {
+      int t = CStrUtil::toInteger(args[0]); if (t != 4) return false;
+
       *width  = CStrUtil::toInteger(args[2]);
       *height = CStrUtil::toInteger(args[1]);
+
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool
+CEscape::
+getWindowPos(int *row, int *col)
+{
+  // get window pixel size
+  COSRead::write(0, CEscape::DSR(6).c_str());
+
+  std::string result = readResult();
+
+  std::vector<std::string> args;
+
+  if (parseEscape(result, args)) {
+    uint num_args = args.size();
+
+    // CSI <row> ; <col> R
+    if (num_args == 2 && CStrUtil::isInteger(args[0]) && CStrUtil::isInteger(args[1])) {
+      *row = CStrUtil::toInteger(args[0]);
+      *col = CStrUtil::toInteger(args[1]);
 
       return true;
     }
@@ -2258,10 +2300,40 @@ readResult()
 {
   std::string result;
 
-  if (COSRead::wait_read(0, 1, 0))
+  if (COSRead::wait_read(0, s_readResultSecs, s_readResultMSecs))
     COSRead::read(0, result);
 
+  if (s_logResult) {
+    if (! s_logFile)
+      s_logFile = fopen(".logfile", "w");
+
+    fprintf(s_logFile, "%s\n", result.c_str());
+  }
+
   return result;
+}
+
+void
+CEscape::
+setLogResult(bool b)
+{
+  s_logResult = b;
+
+  if (! s_logResult) {
+    if (s_logFile) {
+      fclose(s_logFile);
+
+      s_logFile = nullptr;
+    }
+  }
+}
+
+void
+CEscape::
+setReadResultTime(int secs, int msecs)
+{
+  s_readResultSecs  = secs;
+  s_readResultMSecs = msecs;
 }
 
 bool

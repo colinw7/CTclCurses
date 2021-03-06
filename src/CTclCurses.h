@@ -37,7 +37,9 @@ class Tcl : public CTcl {
    app_(app) {
   }
 
-  virtual void outputError(const std::string &msg) override;
+  void outputError(const std::string &msg) override;
+
+  void handleTrace(const char *name, int flags) override;
 
  private:
   App* app_ { nullptr };
@@ -95,6 +97,12 @@ class App {
 
   //---
 
+  void updateWindowCharSize();
+  void updateWindowPixelSize();
+  void updateWindowPos();
+
+  //---
+
   void keyPress(const KeyData &);
 
   void mousePress  (const MouseData &) { }
@@ -109,11 +117,14 @@ class App {
   void drawBox(int r1, int c1, int r2, int c2) const;
   void fillBox(int r1, int c1, int r2, int c2) const;
 
-  void drawChar(int row, int col, char c) const;
+  void drawChar  (int row, int col, char c) const;
+  void drawString(int row, int col, const std::string &s) const;
 
   void clearStyle();
 
   void outputError(const std::string &msg);
+
+  void handleTrace(const std::string &name, int flags);
 
   //---
 
@@ -150,6 +161,7 @@ class App {
   static int boxProc        (void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int boxWidgetProc  (void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int winOpProc      (void *, Tcl_Interp *, int, const Tcl_Obj **);
+  static int ttyStateProc   (void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int rawProc        (void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int doneProc       (void *, Tcl_Interp *, int, const Tcl_Obj **);
 
@@ -181,6 +193,8 @@ class App {
   Widgets focusWidgets_;
 
   std::string errorMsg_;
+
+  mutable bool in_redraw_ { false };
 };
 
 //---

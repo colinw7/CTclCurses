@@ -52,7 +52,6 @@ namespace {
       return colors;
     }
     else if (name == "indigo") {
-
       static std::vector<std::string> colors = {
         "#e8eaf6", "#c5cae9", "#9fa8da", "#7986cb", "#5c6bc0", "#3f51b5", "#3949ab",
         "#303f9f", "#283593", "#1a237e", "#8c9eff", "#536dfe", "#3d5afe", "#304ffe" };
@@ -284,11 +283,22 @@ outputError(const std::string &msg)
   app_->outputError(msg);
 }
 
+void
+Tcl::
+handleTrace(const char *name, int flags)
+{
+  app_->handleTrace(name, flags);
+}
+
 //---
 
 App::
 App(bool raw)
 {
+  //CEscape::setLogResult(true);
+
+  CEscape::setReadResultTime(0, 500000);
+
   if (raw)
     setRaw(true);
 
@@ -304,6 +314,8 @@ App::
 
   if (raw_)
     setRaw(false);
+
+  //CEscape::setLogResult(false);
 }
 
 bool
@@ -343,6 +355,8 @@ init()
     (Tcl::ObjCmdProc) &App::boxProc     , (Tcl::ObjCmdData) this);
   tcl_->createObjCommand("winop",
     (Tcl::ObjCmdProc) &App::winOpProc   , (Tcl::ObjCmdData) this);
+  tcl_->createObjCommand("ttystate",
+    (Tcl::ObjCmdProc) &App::ttyStateProc, (Tcl::ObjCmdData) this);
   tcl_->createObjCommand("raw",
     (Tcl::ObjCmdProc) &App::rawProc     , (Tcl::ObjCmdData) this);
   tcl_->createObjCommand("done",
@@ -360,15 +374,15 @@ init()
 
   //---
 
-  if (CEscape::getWindowCharSize(&screenRows_, &screenCols_)) {
-    tcl_->createVar("window_rows", screenRows_);
-    tcl_->createVar("window_cols", screenCols_);
-  }
+  std::vector<int> ivals; ivals.push_back(0); ivals.push_back(0);
 
-  if (CEscape::getWindowPixelSize(&screenWidth_, &screenHeight_)) {
-    tcl_->createVar("window_width" , screenWidth_ );
-    tcl_->createVar("window_height", screenHeight_);
-  }
+  tcl_->createVar("window_pos"       , ivals);
+  tcl_->createVar("window_char_size" , ivals);
+  tcl_->createVar("window_pixel_size", ivals);
+
+  tcl_->traceVar("window_pos"       );
+  tcl_->traceVar("window_char_size" );
+  tcl_->traceVar("window_pixel_size");
 
   //---
 
@@ -539,7 +553,7 @@ bgColorProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
   assert(th);
 
   auto args = th->getArgs(objc, objv);
-  if (args.size() <= 1) return TCL_ERROR;
+  if (args.size() < 1) return TCL_ERROR;
 
   if      (args[0] == "rgb") {
     if (args.size() < 4) return TCL_ERROR;
@@ -635,7 +649,7 @@ fgColorProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
     int r, g, b;
 
     if (colorSetColor(name, ind, r, g, b))
-      COSRead::write(STDOUT_FILENO, CEscape::SGR_bg(r, g, b));
+      COSRead::write(STDOUT_FILENO, CEscape::SGR_fg(r, g, b));
   }
   else {
     if (args.size() != 1) return TCL_ERROR;
@@ -1130,6 +1144,53 @@ winOpProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 
 int
 App::
+ttyStateProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
+{
+  auto *th = static_cast<App *>(clientData);
+  assert(th);
+
+  auto args = th->getArgs(objc, objv);
+  if (args.size() < 2) return TCL_ERROR;
+
+  std::string op   = CStrUtil::toLower(args[0]);
+  std::string name = CStrUtil::toLower(args[1]);
+
+  if      (op == "get") {
+  }
+  else if (op == "set") {
+    if (args.size() < 3) return TCL_ERROR;
+
+    std::string value = CStrUtil::toLower(args[2]);
+
+    if      (name == "inverse_video")
+      COSRead::write(STDOUT_FILENO, CEscape::DECSCNM(value == "1")); // DECSET/DECRST 5
+    else if (name == "show_cursor") {
+      if (value == "1")
+        COSRead::write(STDOUT_FILENO, CEscape::DECSET(25));
+      else
+        COSRead::write(STDOUT_FILENO, CEscape::DECRST(25));
+    }
+    else if (name == "blink_cursor") {
+      if (value == "1")
+        COSRead::write(STDOUT_FILENO, CEscape::DECSET(12));
+      else
+        COSRead::write(STDOUT_FILENO, CEscape::DECRST(12));
+    }
+    else if (name == "scrollbar") {
+      if (value == "1")
+        COSRead::write(STDOUT_FILENO, CEscape::DECSET(30));
+      else
+        COSRead::write(STDOUT_FILENO, CEscape::DECRST(30));
+    }
+  }
+
+  return TCL_OK;
+}
+
+//---
+
+int
+App::
 rawProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 {
   auto *th = static_cast<App *>(clientData);
@@ -1218,8 +1279,48 @@ loop()
 
 void
 App::
+updateWindowCharSize()
+{
+  if (CEscape::getWindowCharSize(&screenRows_, &screenCols_)) {
+    std::vector<int> ivals; ivals.push_back(screenRows_); ivals.push_back(screenCols_);
+
+    tcl_->createVar("window_char_size", ivals);
+  }
+}
+
+void
+App::
+updateWindowPixelSize()
+{
+  if (CEscape::getWindowPixelSize(&screenWidth_, &screenHeight_)) {
+    std::vector<int> ivals; ivals.push_back(screenWidth_); ivals.push_back(screenHeight_);
+
+    tcl_->createVar("window_pixel_size", ivals);
+  }
+}
+
+void
+App::
+updateWindowPos()
+{
+  int row, col;
+
+  if (CEscape::getWindowPos(&row, &col)) {
+    std::vector<int> ivals; ivals.push_back(row); ivals.push_back(col);
+
+    tcl_->createVar("window_pos", ivals);
+  }
+}
+
+void
+App::
 redraw()
 {
+  if (in_redraw_)
+    return;
+
+  in_redraw_ = true;
+
   COSRead::write(STDOUT_FILENO, CEscape::ED(2)); // all
 
   std::string res;
@@ -1228,6 +1329,8 @@ redraw()
 
   for (const auto &w : widgets_)
     w->draw();
+
+  in_redraw_ = false;
 }
 
 void
@@ -1445,7 +1548,7 @@ processChar(unsigned char c)
     case ''  : { data.type = CKEY_TYPE_EOT         ; data.text = "line_del"  ; break; }
     case ''  : { data.type = CKEY_TYPE_ENQ         ; data.text = "line_end"  ; break; }
     case ''  : { data.type = CKEY_TYPE_ACK         ; data.text = "line_right"; break; }
-    case ''  : { data.type = CKEY_TYPE_BEL         ; break; }
+    case ''  : { data.type = CKEY_TYPE_BEL         ; data.text = "bell"      ; break; }
     case ''  : { data.type = CKEY_TYPE_BackSpace   ; data.text = "backspace" ; break; }
     case '\011': { data.type = CKEY_TYPE_TAB         ; data.text = "tab"       ; break; }
     case '\012': { data.type = CKEY_TYPE_LineFeed    ; data.text = "lf"        ; break; }
@@ -1629,19 +1732,21 @@ void
 App::
 drawBox(int r1, int c1, int r2, int c2) const
 {
-  drawChar(r1, c1, '+');
-  drawChar(r1, c2, '+');
-  drawChar(r2, c1, '+');
-  drawChar(r2, c2, '+');
+  // corners
+  drawString(r1, c1, "\u250c" /*'+'*/);
+  drawString(r1, c2, "\u2510" /*'+'*/);
+  drawString(r2, c1, "\u2514" /*'+'*/);
+  drawString(r2, c2, "\u2518" /*'+'*/);
 
+  // sides
   for (int r = r1 + 1; r <= r2 - 1; ++r) {
-    drawChar(r, c1, '|');
-    drawChar(r, c2, '|');
+    drawString(r, c1, "\u2502" /*'|'*/);
+    drawString(r, c2, "\u2502" /*'|'*/);
   }
 
   for (int c = c1 + 1; c <= c2 - 1; ++c) {
-    drawChar(r1, c, '-');
-    drawChar(r2, c, '-');
+    drawString(r1, c, "\u2500" /*'-'*/);
+    drawString(r2, c, "\u2500" /*'-'*/);
   }
 }
 
@@ -1651,9 +1756,7 @@ fillBox(int r1, int c1, int r2, int c2) const
 {
   for (int r = r1; r <= r2; ++r) {
     for (int c = c1; c <= c2; ++c) {
-       moveTo(r, c);
-
-      COSRead::write(STDOUT_FILENO, "\u2588");
+      drawString(r, c, "\u2588");
     }
   }
 }
@@ -1665,6 +1768,15 @@ drawChar(int row, int col, char c) const
   moveTo(row, col);
 
   COSRead::write(STDOUT_FILENO, c);
+}
+
+void
+App::
+drawString(int row, int col, const std::string &s) const
+{
+  moveTo(row, col);
+
+  COSRead::write(STDOUT_FILENO, s);
 }
 
 void
@@ -1700,6 +1812,18 @@ outputError(const std::string &msg)
     errorMsg_ += "\n";
 
   errorMsg_ += msg;
+}
+
+void
+App::
+handleTrace(const std::string &name, int /*flags*/)
+{
+  if      (name == "window_pos" || name == "::window_pos")
+    updateWindowPos();
+  else if (name == "window_char_size" || name == "::window_char_size")
+    updateWindowCharSize();
+  else if (name == "window_pixel_size" || name == "::window_pixel_size")
+    updateWindowPixelSize();
 }
 
 //---
@@ -1772,9 +1896,7 @@ void
 Label::
 draw() const
 {
-  app_->moveTo(row_, col_);
-
-  COSRead::write(STDOUT_FILENO, text_);
+  app_->drawString(row_, col_, text_);
 }
 
 //---
@@ -1858,9 +1980,7 @@ draw() const
     else
       COSRead::write(STDOUT_FILENO, "  ");
 
-    app_->moveTo(y + row_ + 1, col_ + 4);
-
-    COSRead::write(STDOUT_FILENO, str);
+    app_->drawString(y + row_ + 1, col_ + 4, str);
 
     ++y;
   }
@@ -1960,10 +2080,8 @@ draw() const
 
   app_->clearStyle();
 
-  app_->moveTo(row_ + 1, col_ + 1);
-
   if (checked_)
-    COSRead::write(STDOUT_FILENO, "x");
+    app_->drawString(row_ + 1, col_ + 1, "\u2713" /*"x"*/);
 }
 
 void

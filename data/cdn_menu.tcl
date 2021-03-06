@@ -14,12 +14,10 @@ proc menuIndexChangedProc { name } {
 }
 
 proc menuExecProc { name } {
-  done $name
+  done [$name get currentText]
 }
 
 raw
-
-cls
 
 winop window_title "Directories matching $pattern"
 
@@ -29,4 +27,4 @@ set m [menu 2 2 $dirs]
 
 cls
 
-$m set height 20
+$m set height 50
