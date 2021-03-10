@@ -1,3 +1,9 @@
+if {! [info exists pattern]} {
+  set pattern CTclCurses
+  done
+  return
+}
+
 catch {exec /home/colinw/dev/script/grep_src -d -f $pattern | sort -u} dirs
 
 set n [llength $dirs]
@@ -10,20 +16,18 @@ if       {$n == 0} {
   return
 }
 
-proc menuIndexChangedProc { name } {
+proc tlistIndexChangedProc { name } {
 }
 
-proc menuExecProc { name } {
+proc tlistExecProc { name } {
   done [$name get currentText]
 }
 
-raw
-
 winop window_title "Directories matching $pattern"
 
-label 0 2 "$n directories match"
+tlabel 0 2 "$n directories match"
 
-set m [menu 2 2 $dirs]
+set m [tlist 2 2 $dirs]
 
 cls
 

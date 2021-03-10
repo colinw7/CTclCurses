@@ -1,1 +1,1 @@
-set label1 [label 2 2 Label]
+set label1 [tlabel 2 2 Label]

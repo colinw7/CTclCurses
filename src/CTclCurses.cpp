@@ -343,15 +343,17 @@ init()
     (Tcl::ObjCmdProc) &App::drawBoxProc , (Tcl::ObjCmdData) this);
   tcl_->createObjCommand("draw_text",
     (Tcl::ObjCmdProc) &App::drawTextProc, (Tcl::ObjCmdData) this);
-  tcl_->createObjCommand("label",
+  tcl_->createObjCommand("tlabel",
     (Tcl::ObjCmdProc) &App::labelProc   , (Tcl::ObjCmdData) this);
-  tcl_->createObjCommand("menu",
-    (Tcl::ObjCmdProc) &App::menuProc    , (Tcl::ObjCmdData) this);
-  tcl_->createObjCommand("check",
+  tcl_->createObjCommand("tlist",
+    (Tcl::ObjCmdProc) &App::listProc    , (Tcl::ObjCmdData) this);
+  tcl_->createObjCommand("ttable",
+    (Tcl::ObjCmdProc) &App::tableProc   , (Tcl::ObjCmdData) this);
+  tcl_->createObjCommand("tcheck",
     (Tcl::ObjCmdProc) &App::checkProc   , (Tcl::ObjCmdData) this);
-  tcl_->createObjCommand("input",
+  tcl_->createObjCommand("tinput",
     (Tcl::ObjCmdProc) &App::inputProc   , (Tcl::ObjCmdData) this);
-  tcl_->createObjCommand("box",
+  tcl_->createObjCommand("tbox",
     (Tcl::ObjCmdProc) &App::boxProc     , (Tcl::ObjCmdData) this);
   tcl_->createObjCommand("winop",
     (Tcl::ObjCmdProc) &App::winOpProc   , (Tcl::ObjCmdData) this);
@@ -687,7 +689,7 @@ labelProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
   if (args.size() > 2)
     text = args[2];
 
-  std::string widgetName = "label." + std::to_string(th->numWidgets() + 1);
+  auto widgetName = "label." + std::to_string(th->numWidgets() + 1);
 
   auto *label = new Label(th, widgetName, row, col, text);
 
@@ -740,7 +742,7 @@ labelWidgetProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 
 int
 App::
-menuProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
+listProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 {
   auto *th = static_cast<App *>(clientData);
   assert(th);
@@ -756,14 +758,14 @@ menuProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
   if (! th->tcl()->splitList(args[2], strs))
     return TCL_ERROR;
 
-  std::string widgetName = "menu." + std::to_string(th->numWidgets() + 1);
+  auto widgetName = "tlist." + std::to_string(th->numWidgets() + 1);
 
-  auto *menu = new Menu(th, widgetName, row, col, strs);
+  auto *list = new List(th, widgetName, row, col, strs);
 
   th->tcl()->createObjCommand(widgetName,
-    (Tcl::ObjCmdProc) &App::menuWidgetProc, (Tcl::ObjCmdData) menu);
+    (Tcl::ObjCmdProc) &App::listWidgetProc, (Tcl::ObjCmdData) list);
 
-  th->addWidget(menu);
+  th->addWidget(list);
 
   th->redraw();
 
@@ -774,21 +776,21 @@ menuProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 
 int
 App::
-menuWidgetProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
+listWidgetProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 {
-  auto *menu = static_cast<Menu *>(clientData);
-  assert(menu);
+  auto *list = static_cast<List *>(clientData);
+  assert(list);
 
-  auto args = menu->app()->getArgs(objc, objv);
+  auto args = list->app()->getArgs(objc, objv);
   if (args.size() < 1) return TCL_ERROR;
 
   if       (args[0] == "get") {
     if (args.size() < 2) return TCL_ERROR;
 
     if      (args[1] == "currentInd")
-      menu->app()->tcl()->setResult(menu->currentInd());
+      list->app()->tcl()->setResult(list->currentInd());
     else if (args[1] == "currentText")
-      menu->app()->tcl()->setResult(menu->currentText());
+      list->app()->tcl()->setResult(list->currentText());
     else
       return TCL_ERROR;
   }
@@ -796,11 +798,115 @@ menuWidgetProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
     if (args.size() < 3) return TCL_ERROR;
 
     if      (args[1] == "currentInd")
-      menu->setCurrentInd(std::stoi(args[2]));
+      list->setCurrentInd(std::stoi(args[2]));
     else if (args[1] == "width")
-      menu->setWidth(std::stoi(args[2]));
+      list->setWidth(std::stoi(args[2]));
     else if (args[1] == "height")
-      menu->setHeight(std::stoi(args[2]));
+      list->setHeight(std::stoi(args[2]));
+    else
+      return TCL_ERROR;
+  }
+  else {
+    return TCL_ERROR;
+  }
+
+  return TCL_OK;
+}
+
+//---
+
+int
+App::
+tableProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
+{
+  auto *th = static_cast<App *>(clientData);
+  assert(th);
+
+  auto args = th->getArgs(objc, objv);
+  if (args.size() != 3) return TCL_ERROR;
+
+  int row = std::stoi(args[0]);
+  int col = std::stoi(args[1]);
+
+  Tcl::StringList strs;
+
+  if (! th->tcl()->splitList(args[2], strs))
+    return TCL_ERROR;
+
+  using ColStrs = std::vector<StringList>;
+
+  ColStrs colStrs;
+
+  int nc = strs.size();
+  int nr = 0;
+
+  for (int c = 0; c < nc; ++c) {
+    Tcl::StringList cstrs;
+
+    if (! th->tcl()->splitList(strs[c], cstrs))
+      return TCL_ERROR;
+
+    nr = std::max(nr, int(cstrs.size()));
+
+    colStrs.push_back(cstrs);
+  }
+
+  for (int c = 0; c < nc; ++c) {
+    while (int(colStrs[c].size()) < nr)
+      colStrs[c].push_back("");
+  }
+
+  auto widgetName = "ttable." + std::to_string(th->numWidgets() + 1);
+
+  auto *table = new Table(th, widgetName, row, col, nr, nc, colStrs);
+
+  th->tcl()->createObjCommand(widgetName,
+    (Tcl::ObjCmdProc) &App::tableWidgetProc, (Tcl::ObjCmdData) table);
+
+  th->addWidget(table);
+
+  th->redraw();
+
+  th->tcl()->setResult(widgetName);
+
+  return TCL_OK;
+}
+
+int
+App::
+tableWidgetProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
+{
+  auto *table = static_cast<Table *>(clientData);
+  assert(table);
+
+  auto args = table->app()->getArgs(objc, objv);
+  if (args.size() < 1) return TCL_ERROR;
+
+  if       (args[0] == "get") {
+    if (args.size() < 2) return TCL_ERROR;
+
+    if (args[1] == "currentRow")
+      table->app()->tcl()->setResult(table->currentRow());
+    else
+      return TCL_ERROR;
+  }
+  else if (args[0] == "set") {
+    if (args.size() < 3) return TCL_ERROR;
+
+    if      (args[1] == "currentRow")
+      table->setCurrentRow(std::stoi(args[2]));
+    else if (args[1] == "item") {
+      if (args.size() < 5) return TCL_ERROR;
+
+      int row = std::stoi(args[2]);
+      int col = std::stoi(args[3]);
+
+      table->setItem(row, col, args[4]);
+    }
+    else if (args[1] == "width")
+      table->setWidth(std::stoi(args[2]));
+    else if (args[1] == "height")
+      table->setHeight(std::stoi(args[2]));
     else
       return TCL_ERROR;
   }
@@ -826,7 +932,7 @@ checkProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
   int row = std::stoi(args[0]);
   int col = std::stoi(args[1]);
 
-  std::string widgetName = "check." + std::to_string(th->numWidgets() + 1);
+  auto widgetName = "tcheck." + std::to_string(th->numWidgets() + 1);
 
   auto *check = new Check(th, widgetName, row, col);
 
@@ -890,7 +996,7 @@ inputProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
   int row = std::stoi(args[0]);
   int col = std::stoi(args[1]);
 
-  std::string widgetName = "input." + std::to_string(th->numWidgets() + 1);
+  auto widgetName = "tinput." + std::to_string(th->numWidgets() + 1);
 
   auto *input = new Input(th, widgetName, row, col);
 
@@ -960,7 +1066,7 @@ boxProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
   int w   = std::stoi(args[2]);
   int h   = std::stoi(args[3]);
 
-  std::string widgetName = "box." + std::to_string(th->numWidgets() + 1);
+  auto widgetName = "tbox." + std::to_string(th->numWidgets() + 1);
 
   auto *box = new Box(th, widgetName, row, col, w, h);
 
@@ -1901,8 +2007,8 @@ draw() const
 
 //---
 
-Menu::
-Menu(App *app, const std::string &name, int row, int col, const StringList &strs) :
+List::
+List(App *app, const std::string &name, int row, int col, const StringList &strs) :
  Widget(app, name), row_(row), col_(col), strs_(strs)
 {
   width_ = 0;
@@ -1916,7 +2022,7 @@ Menu(App *app, const std::string &name, int row, int col, const StringList &strs
 }
 
 void
-Menu::
+List::
 setCurrentInd(int i)
 {
   if (i < 0 || i >= int(strs_.size()))
@@ -1928,7 +2034,7 @@ setCurrentInd(int i)
 }
 
 std::string
-Menu::
+List::
 currentText() const
 {
   if (current_ < 0 || current_ >= int(strs_.size()))
@@ -1938,7 +2044,7 @@ currentText() const
 }
 
 void
-Menu::
+List::
 draw() const
 {
   int focusColor = 5;
@@ -1989,7 +2095,7 @@ draw() const
 }
 
 void
-Menu::
+List::
 keyPress(const KeyData &data)
 {
   if (! hasFocus())
@@ -2004,7 +2110,7 @@ keyPress(const KeyData &data)
 
     app_->redraw();
 
-    app_->tcl()->eval("menuIndexChangedProc {" + name() + "}", res, /*showError*/true);
+    app_->tcl()->eval("tlistIndexChangedProc {" + name() + "}", res, /*showError*/true);
   }
   else if (data.text == "end") {
     if (current_ >= int(n_ - 1)) return;
@@ -2013,7 +2119,7 @@ keyPress(const KeyData &data)
 
     app_->redraw();
 
-    app_->tcl()->eval("menuIndexChangedProc {" + name() + "}", res, /*showError*/true);
+    app_->tcl()->eval("tlistIndexChangedProc {" + name() + "}", res, /*showError*/true);
   }
   else if (data.text == "down") {
     if (current_ >= int(n_ - 1)) return;
@@ -2027,7 +2133,7 @@ keyPress(const KeyData &data)
 
     app_->redraw();
 
-    app_->tcl()->eval("menuIndexChangedProc {" + name() + "}", res, /*showError*/true);
+    app_->tcl()->eval("tlistIndexChangedProc {" + name() + "}", res, /*showError*/true);
   }
   else if (data.text == "up") {
     if (current_ <= 0) return;
@@ -2041,10 +2147,188 @@ keyPress(const KeyData &data)
 
     app_->redraw();
 
-    app_->tcl()->eval("menuIndexChangedProc {" + name() + "}", res, /*showError*/true);
+    app_->tcl()->eval("tlistIndexChangedProc {" + name() + "}", res, /*showError*/true);
   }
   else if (data.text == "return") {
-    app_->tcl()->eval("menuExecProc {" + name() + "}", res, /*showError*/true);
+    app_->tcl()->eval("tlistExecProc {" + name() + "}", res, /*showError*/true);
+  }
+}
+
+//---
+
+Table::
+Table(App *app, const std::string &name, int row, int col, int nr, int nc,
+      const ColStringList &colStrs) :
+ Widget(app, name), row_(row), col_(col), nr_(nr), nc_(nc), colStrs_(colStrs)
+{
+  for (int c = 0; c < nc; ++c) {
+    colWidth_[c] = 0;
+
+    for (const auto &str : colStrs_[c])
+      colWidth_[c] = std::max(colWidth_[c], int(str.size()));
+  }
+
+  width_ = 0;
+
+  for (int c = 0; c < nc; ++c)
+    width_ += colWidth_[c] + 1;
+
+  height_ = nr_;
+}
+
+void
+Table::
+setCurrentRow(int r)
+{
+  if (r < 0 || r >= nr_)
+    return;
+
+  currentRow_ = r;
+
+  app_->redraw();
+}
+
+void
+Table::
+setItem(int r, int c, const std::string &text)
+{
+  if (r < 0 || r >= nr_ || c < 0 || c >= nc_)
+    return;
+
+  colStrs_[c][r] = text;
+
+  app_->redraw();
+}
+
+void
+Table::
+draw() const
+{
+  auto *th = const_cast<Table *>(this);
+
+  int focusColor = 5;
+
+  if (hasFocus())
+    COSRead::write(STDOUT_FILENO, CEscape::SGR(30 + focusColor));
+  else
+    app_->clearStyle();
+
+  app_->drawBox(row_, col_, row_ + height_ + 1, col_ + width_ + 5);
+
+  app_->clearStyle();
+
+  int cursorColor = 3;
+
+  int y = 0;
+
+  for (int r = 0; r < nr_; ++r) {
+    if (r < -yOffset_)
+      continue;
+
+    if (y >= height_)
+      break;
+
+    int x = col_ + 1;
+
+    for (int c = 0; c < nc_; ++c) {
+      const auto &str = colStrs_[c][y - yOffset_];
+
+      app_->moveTo(y + row_ + 1, x);
+
+      if (c == 0) {
+        if (r == currentRow_) {
+          if (hasFocus())
+            COSRead::write(STDOUT_FILENO, CEscape::SGR(30 + cursorColor));
+          else
+            app_->clearStyle();
+
+          COSRead::write(STDOUT_FILENO, "->");
+
+          app_->clearStyle();
+        }
+        else
+          COSRead::write(STDOUT_FILENO, "  ");
+      }
+      else {
+        if (hasFocus())
+          COSRead::write(STDOUT_FILENO, CEscape::SGR(30 + focusColor));
+
+        COSRead::write(STDOUT_FILENO, " \u2502" /*'|'*/);
+      }
+
+      COSRead::write(STDOUT_FILENO, CEscape::SGR(0));
+
+      app_->drawString(y + row_ + 1, x + 3, str);
+
+      if (c == 0)
+        x += th->colWidth_[c] + 3;
+      else
+        x += th->colWidth_[c] + 2;
+    }
+
+    ++y;
+  }
+
+  app_->moveTo(y + row_ + 3, 0);
+}
+
+void
+Table::
+keyPress(const KeyData &data)
+{
+  if (! hasFocus())
+    return;
+
+  std::string res;
+
+  if      (data.text == "home") {
+    if (currentRow_ <= 0) return;
+
+    currentRow_ = 0;
+
+    app_->redraw();
+
+    app_->tcl()->eval("ttableIndexChangedProc {" + name() + "}", res, /*showError*/true);
+  }
+  else if (data.text == "end") {
+    if (currentRow_ >= int(height_ - 1)) return;
+
+    currentRow_ = height_ - 1;
+
+    app_->redraw();
+
+    app_->tcl()->eval("ttableIndexChangedProc {" + name() + "}", res, /*showError*/true);
+  }
+  else if (data.text == "down") {
+    if (currentRow_ >= int(height_ - 1)) return;
+
+    ++currentRow_;
+
+    if (currentRow_ + yOffset_ + 1 > height_) {
+      if (yOffset_ > 0)
+        --yOffset_;
+    }
+
+    app_->redraw();
+
+    app_->tcl()->eval("ttableIndexChangedProc {" + name() + "}", res, /*showError*/true);
+  }
+  else if (data.text == "up") {
+    if (currentRow_ <= 0) return;
+
+    --currentRow_;
+
+    if (currentRow_ + yOffset_ - 1 < 0) {
+      if (yOffset_ < 0)
+        ++yOffset_;
+    }
+
+    app_->redraw();
+
+    app_->tcl()->eval("ttableIndexChangedProc {" + name() + "}", res, /*showError*/true);
+  }
+  else if (data.text == "return") {
+    app_->tcl()->eval("ttableExecProc {" + name() + "}", res, /*showError*/true);
   }
 }
 
@@ -2096,7 +2380,7 @@ keyPress(const KeyData &data)
   if (data.text == "return" || data.text == " ") {
     checked_ = ! checked_;
 
-    app_->tcl()->eval("checkStateChangedProc {" + name() + "}", res, /*showError*/true);
+    app_->tcl()->eval("tcheckStateChangedProc {" + name() + "}", res, /*showError*/true);
 
     app_->redraw();
   }
@@ -2262,7 +2546,7 @@ keyPress(const KeyData &data)
   else if (data.text == "return") {
     std::string res;
 
-    app_->tcl()->eval("inputExecProc {" + name() + "}", res, /*showError*/true);
+    app_->tcl()->eval("tinputExecProc {" + name() + "}", res, /*showError*/true);
   }
 }
 

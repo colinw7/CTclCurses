@@ -1,3 +1,4 @@
++ interactive du (table, preload (save state) and update per dir)
 + color palette browser (named color, palette, rgb, ...)
   https://github.com/joowani/colorpedia
 + menu object and instance command

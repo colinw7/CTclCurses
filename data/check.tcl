@@ -1,3 +1,6 @@
 cls
 
-check 2 2
+tcheck 2 2
+
+proc tcheckStateChangedProc { name } {
+}

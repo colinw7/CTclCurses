@@ -1,14 +1,14 @@
 cls
 
-set i1 [input 2 2]
-set b1 [box   6 2 12 7]
-set l1 [label 20 2]
-set l2 [label 21 2]
-set l3 [label 22 2]
+set i1 [tinput 2 2]
+set b1 [tbox   6 2 12 7]
+set l1 [tlabel 20 2]
+set l2 [tlabel 21 2]
+set l3 [tlabel 22 2]
 
 $i1 set text "green"
 
-proc inputExecProc { name } {
+proc tinputExecProc { name } {
   $::b1 set fill [$::i1 get text]
 
   set rgb [$::b1 get fill_rgb]
@@ -19,4 +19,4 @@ proc inputExecProc { name } {
   $::l3 set text [format "HSV : %d %d %d" [lindex $hsv 0] [lindex $hsv 1] [lindex $hsv 2]]
 }
 
-inputExecProc ""
+tinputExecProc ""

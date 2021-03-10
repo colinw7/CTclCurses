@@ -5,6 +5,7 @@
 #include <CKeyType.h>
 #include <string>
 #include <vector>
+#include <map>
 
 class CTcl;
 
@@ -152,8 +153,10 @@ class App {
   static int drawBoxProc    (void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int labelProc      (void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int labelWidgetProc(void *, Tcl_Interp *, int, const Tcl_Obj **);
-  static int menuProc       (void *, Tcl_Interp *, int, const Tcl_Obj **);
-  static int menuWidgetProc (void *, Tcl_Interp *, int, const Tcl_Obj **);
+  static int listProc       (void *, Tcl_Interp *, int, const Tcl_Obj **);
+  static int listWidgetProc (void *, Tcl_Interp *, int, const Tcl_Obj **);
+  static int tableProc      (void *, Tcl_Interp *, int, const Tcl_Obj **);
+  static int tableWidgetProc(void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int checkProc      (void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int checkWidgetProc(void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int inputProc      (void *, Tcl_Interp *, int, const Tcl_Obj **);
@@ -251,12 +254,12 @@ class Label : public Widget {
 
 //---
 
-class Menu : public Widget {
+class List : public Widget {
  public:
   using StringList = std::vector<std::string>;
 
  public:
-  Menu(App *app, const std::string &name, int row, int col, const StringList &strs);
+  List(App *app, const std::string &name, int row, int col, const StringList &strs);
 
   bool canFocus() const override { return true; }
 
@@ -295,6 +298,68 @@ class Menu : public Widget {
   int        current_ { 0 };
 //int        xOffset_ { 0 };
   int        yOffset_ { 0 };
+};
+
+//---
+
+class Table : public Widget {
+ public:
+  using StringList    = std::vector<std::string>;
+  using ColStringList = std::vector<StringList>;
+
+ public:
+  Table(App *app, const std::string &name, int row, int col, int nr, int nc,
+        const ColStringList &colStrs);
+
+  bool canFocus() const override { return true; }
+
+  //---
+
+  int row() const { return row_; }
+  void setRow(int i) { row_ = i; }
+
+  int col() const { return col_; }
+  void setCol(int i) { col_ = i; }
+
+  int numRows() const { return nr_; }
+  void setNumRows(int n) { nr_ = n; }
+
+  int numCols() const { return nc_; }
+  void setNumCols(int n) { nc_ = n; }
+
+  int width() const { return width_; }
+  void setWidth(int i) { width_ = i; }
+
+  int height() const { return height_; }
+  void setHeight(int i) { height_ = i; }
+
+  int currentRow() const { return currentRow_; }
+  void setCurrentRow(int i);
+
+  void setItem(int r, int c, const std::string &text);
+
+  //---
+
+  std::string currentText() const;
+
+  void draw() const override;
+
+  void keyPress(const KeyData &data) override;
+
+ private:
+  using ColWidth = std::map<int, int>;
+
+  int           row_        { 0 };
+  int           col_        { 0 };
+  int           nr_         { 0 };
+  int           nc_         { 0 };
+  ColWidth      colWidth_;
+  int           width_      { -1 };
+  int           height_     { -1 };
+  ColStringList colStrs_;
+  int           currentRow_ { 0 };
+//int           xOffset_    { 0 };
+  int           yOffset_    { 0 };
 };
 
 //---

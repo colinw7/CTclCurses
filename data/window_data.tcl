@@ -1,11 +1,11 @@
-set label1 [label 2 2  "Pos" ]
-set label2 [label 2 14 "" ]
-set label3 [label 3 2  "Char Size"]
-set label4 [label 3 14 ""]
-set label5 [label 4 2  "Pixel Size"]
-set label6 [label 4 14 ""]
+set label1 [tlabel 2 2  "Pos" ]
+set label2 [tlabel 2 14 "" ]
+set label3 [tlabel 3 2  "Char Size"]
+set label4 [tlabel 3 14 ""]
+set label5 [tlabel 4 2  "Pixel Size"]
+set label6 [tlabel 4 14 ""]
 
-set i1 [input 5 2]
+set i1 [tinput 5 2]
 
 proc redrawProc { } {
   $::label2 set text "$::window_pos"
