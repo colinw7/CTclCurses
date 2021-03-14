@@ -115,6 +115,9 @@ class App {
 
   void writeText(const char *text) const;
 
+  void fgIColor(int i);
+  void bgIColor(int i);
+
   void drawBox(int r1, int c1, int r2, int c2) const;
   void fillBox(int r1, int c1, int r2, int c2) const;
 
@@ -333,6 +336,9 @@ class Table : public Widget {
   int height() const { return height_; }
   void setHeight(int i) { height_ = i; }
 
+  bool isHeader() const { return header_; }
+  void setHeader(bool b) { header_ = b; }
+
   int currentRow() const { return currentRow_; }
   void setCurrentRow(int i);
 
@@ -353,6 +359,7 @@ class Table : public Widget {
   int           col_        { 0 };
   int           nr_         { 0 };
   int           nc_         { 0 };
+  bool          header_     { false };
   ColWidth      colWidth_;
   int           width_      { -1 };
   int           height_     { -1 };

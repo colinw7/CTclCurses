@@ -600,7 +600,7 @@ bgColorProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
     th->setColor(icolor);
 
     if (icolor >= 0 && icolor <= 9)
-      COSRead::write(STDOUT_FILENO, CEscape::SGR(40 + icolor));
+      th->bgIColor(icolor);
     else
       th->clearStyle();
   }
@@ -661,7 +661,7 @@ fgColorProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
     th->setColor(icolor);
 
     if (icolor >= 0 && icolor <= 9)
-      COSRead::write(STDOUT_FILENO, CEscape::SGR(30 + icolor));
+      th->fgIColor(icolor);
     else
       th->clearStyle();
   }
@@ -819,46 +819,172 @@ int
 App::
 tableProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 {
+  auto errMsg = [&](const std::string &msg) {
+    std::cerr << msg << "\n";
+    return TCL_ERROR;
+  };
+
   auto *th = static_cast<App *>(clientData);
   assert(th);
 
   auto args = th->getArgs(objc, objv);
-  if (args.size() != 3) return TCL_ERROR;
+  int na = args.size();
 
-  int row = std::stoi(args[0]);
-  int col = std::stoi(args[1]);
+  int         row    = 0;
+  int         col    = 0;
+  int         width  = -1;
+  int         height = -1;
+  std::string data;
+  bool        rows   = false;
+  bool        header = false;
 
+  StringList args1;
+
+  for (int i = 0; i < na; ++i) {
+    if (args[i][0] == '-') {
+      auto arg1 = args[i].substr(1);
+
+      if      (arg1 == "rows") {
+        ++i;
+
+        if (i < na) {
+          data = args[i];
+          rows = true;
+        }
+        else
+          return errMsg("Missing value for -rows");
+      }
+      else if (arg1 == "cols" || arg1 == "columns") {
+        ++i;
+
+        if (i < na) {
+          data = args[i];
+          rows = false;
+        }
+        else
+          return errMsg("Missing value for -rows");
+      }
+      else if (arg1 == "row") {
+        ++i;
+
+        if (i < na)
+          row = std::stoi(args[i]);
+        else
+          return errMsg("Missing value for -row");
+      }
+      else if (arg1 == "col") {
+        ++i;
+
+        if (i < na)
+          col = std::stoi(args[i]);
+        else
+          return errMsg("Missing value for -col");
+      }
+      else if (arg1 == "width") {
+        ++i;
+
+        if (i < na)
+          width = std::stoi(args[i]);
+        else
+          return errMsg("Missing value for -width");
+      }
+      else if (arg1 == "height") {
+        ++i;
+
+        if (i < na)
+          height = std::stoi(args[i]);
+        else
+          return errMsg("Missing value for -height");
+      }
+      else if (arg1 == "header") {
+        header = true;
+      }
+      else
+        return errMsg("Invalid arg '" + args[i] + "'");
+    }
+    else
+      args1.push_back(args[i]);
+  }
+
+  if (! args1.empty())
+    return errMsg("Invalid extra arguments");
+
+  // get data
   Tcl::StringList strs;
 
-  if (! th->tcl()->splitList(args[2], strs))
+  if (! th->tcl()->splitList(data, strs))
     return TCL_ERROR;
 
   using ColStrs = std::vector<StringList>;
 
   ColStrs colStrs;
+  int     nr { 0 }, nc { 0 };
 
-  int nc = strs.size();
-  int nr = 0;
+  if (! rows) {
+    nc = strs.size();
+    nr = 0;
 
-  for (int c = 0; c < nc; ++c) {
-    Tcl::StringList cstrs;
+    for (int c = 0; c < nc; ++c) {
+      Tcl::StringList cstrs;
 
-    if (! th->tcl()->splitList(strs[c], cstrs))
-      return TCL_ERROR;
+      if (! th->tcl()->splitList(strs[c], cstrs))
+        return TCL_ERROR;
 
-    nr = std::max(nr, int(cstrs.size()));
+      nr = std::max(nr, int(cstrs.size()));
 
-    colStrs.push_back(cstrs);
+      colStrs.push_back(cstrs);
+    }
+
+    for (int c = 0; c < nc; ++c) {
+      while (int(colStrs[c].size()) < nr)
+        colStrs[c].push_back("");
+    }
   }
+  else {
+    using RowStrs = std::vector<StringList>;
 
-  for (int c = 0; c < nc; ++c) {
-    while (int(colStrs[c].size()) < nr)
-      colStrs[c].push_back("");
+    RowStrs rowStrs;
+
+    nr = strs.size();
+    nc = 0;
+
+    for (int r = 0; r < nr; ++r) {
+      Tcl::StringList rstrs;
+
+      if (! th->tcl()->splitList(strs[r], rstrs))
+        return TCL_ERROR;
+
+      nc = std::max(nc, int(rstrs.size()));
+
+      rowStrs.push_back(rstrs);
+    }
+
+    for (int r = 0; r < nr; ++r) {
+      while (int(rowStrs[r].size()) < nc)
+        rowStrs[r].push_back("");
+    }
+
+    for (int c = 0; c < nc; ++c) {
+      StringList cstrs;
+
+      for (int r = 0; r < nr; ++r)
+        cstrs.push_back(rowStrs[r][c]);
+
+      colStrs.push_back(cstrs);
+    }
   }
 
   auto widgetName = "ttable." + std::to_string(th->numWidgets() + 1);
 
   auto *table = new Table(th, widgetName, row, col, nr, nc, colStrs);
+
+  table->setHeader(header);
+
+  if (width > 0)
+    table->setWidth(width);
+
+  if (height > 0)
+    table->setHeight(height);
 
   th->tcl()->createObjCommand(widgetName,
     (Tcl::ObjCmdProc) &App::tableWidgetProc, (Tcl::ObjCmdData) table);
@@ -1311,6 +1437,8 @@ rawProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 
   if (op == "" || op == "1") {
     th->setRaw(true);
+
+    th->updateWindowCharSize();
   }
   else {
     th->setRaw(false);
@@ -1836,6 +1964,20 @@ keyPress(const KeyData &data)
 
 void
 App::
+fgIColor(int i)
+{
+  COSRead::write(STDOUT_FILENO, CEscape::SGR(30 + i));
+}
+
+void
+App::
+bgIColor(int i)
+{
+  COSRead::write(STDOUT_FILENO, CEscape::SGR(40 + i));
+}
+
+void
+App::
 drawBox(int r1, int c1, int r2, int c2) const
 {
   // corners
@@ -2050,7 +2192,7 @@ draw() const
   int focusColor = 5;
 
   if (hasFocus())
-    COSRead::write(STDOUT_FILENO, CEscape::SGR(30 + focusColor));
+    app_->fgIColor(focusColor);
   else
     app_->clearStyle();
 
@@ -2075,7 +2217,7 @@ draw() const
 
     if (i == current_) {
       if (hasFocus())
-        COSRead::write(STDOUT_FILENO, CEscape::SGR(30 + cursorColor));
+        app_->fgIColor(cursorColor);
       else
         app_->clearStyle();
 
@@ -2171,7 +2313,7 @@ Table(App *app, const std::string &name, int row, int col, int nr, int nc,
   width_ = 0;
 
   for (int c = 0; c < nc; ++c)
-    width_ += colWidth_[c] + 1;
+    width_ += colWidth_[c] + 3;
 
   height_ = nr_;
 }
@@ -2180,7 +2322,9 @@ void
 Table::
 setCurrentRow(int r)
 {
-  if (r < 0 || r >= nr_)
+  int headerOffset = (isHeader() ? 1 : 0);
+
+  if (r < 0 || r >= nr_ - headerOffset)
     return;
 
   currentRow_ = r;
@@ -2204,41 +2348,66 @@ void
 Table::
 draw() const
 {
+  int screenRows = app_->screenRows();
+  int screenCols = app_->screenCols();
+
+  //---
+
   auto *th = const_cast<Table *>(this);
+
+  //---
 
   int focusColor = 5;
 
   if (hasFocus())
-    COSRead::write(STDOUT_FILENO, CEscape::SGR(30 + focusColor));
+    app_->fgIColor(focusColor);
   else
     app_->clearStyle();
 
-  app_->drawBox(row_, col_, row_ + height_ + 1, col_ + width_ + 5);
+  int height = height_;
+
+  int row2 = row_ + height + 1;
+  int col2 = col_ + width_ + 2;
+
+  if (row2 >= screenRows) {
+    row2   = screenRows - 1;
+    height = screenRows - row_ - 2;
+  }
+
+  if (col2 >= screenCols)
+    col2 = screenCols - 1;
+
+  app_->drawBox(row_, col_, row2, col2);
 
   app_->clearStyle();
 
   int cursorColor = 3;
 
+  int headerOffset = (isHeader() ? 1 : 0);
+
   int y = 0;
 
   for (int r = 0; r < nr_; ++r) {
-    if (r < -yOffset_)
+    bool headerRow = (isHeader() && r == 0);
+
+    if (! headerRow && r < -yOffset_)
       continue;
 
-    if (y >= height_)
+    if (y >= height)
       break;
 
     int x = col_ + 1;
 
     for (int c = 0; c < nc_; ++c) {
-      const auto &str = colStrs_[c][y - yOffset_];
-
       app_->moveTo(y + row_ + 1, x);
 
       if (c == 0) {
-        if (r == currentRow_) {
+        if (x + 2 > screenCols)
+          break;
+
+        if (r == currentRow_ + headerOffset) {
           if (hasFocus())
-            COSRead::write(STDOUT_FILENO, CEscape::SGR(30 + cursorColor));
+            app_->fgIColor(cursorColor);
           else
             app_->clearStyle();
 
@@ -2250,20 +2419,36 @@ draw() const
           COSRead::write(STDOUT_FILENO, "  ");
       }
       else {
+        if (x + 1 > screenCols)
+          break;
+
         if (hasFocus())
-          COSRead::write(STDOUT_FILENO, CEscape::SGR(30 + focusColor));
+          app_->fgIColor(focusColor);
 
         COSRead::write(STDOUT_FILENO, " \u2502" /*'|'*/);
       }
 
-      COSRead::write(STDOUT_FILENO, CEscape::SGR(0));
+      x += 2;
 
-      app_->drawString(y + row_ + 1, x + 3, str);
+      const auto &str = (headerRow ? colStrs_[c][0] : colStrs_[c][y - yOffset_]);
 
-      if (c == 0)
-        x += th->colWidth_[c] + 3;
-      else
-        x += th->colWidth_[c] + 2;
+      if (x + int(str.size()) + 1 > screenCols)
+        break;
+
+      app_->clearStyle();
+
+      if (headerRow) {
+        app_->bgIColor(2);
+
+        COSRead::write(STDOUT_FILENO, CEscape::SGR(1));
+      }
+
+      app_->drawString(y + row_ + 1, x + 1, str);
+
+      if (headerRow)
+        app_->clearStyle();
+
+      x += th->colWidth_[c] + 1;
     }
 
     ++y;
@@ -2291,21 +2476,33 @@ keyPress(const KeyData &data)
     app_->tcl()->eval("ttableIndexChangedProc {" + name() + "}", res, /*showError*/true);
   }
   else if (data.text == "end") {
-    if (currentRow_ >= int(height_ - 1)) return;
+    int headerOffset = (isHeader() ? 1 : 0);
 
-    currentRow_ = height_ - 1;
+    if (currentRow_ >= int(nr_ - headerOffset - 1)) return;
+
+    currentRow_ = nr_ - headerOffset - 1;
 
     app_->redraw();
 
     app_->tcl()->eval("ttableIndexChangedProc {" + name() + "}", res, /*showError*/true);
   }
   else if (data.text == "down") {
-    if (currentRow_ >= int(height_ - 1)) return;
+    int headerOffset = (isHeader() ? 1 : 0);
+
+    if (currentRow_ >= int(nr_ - headerOffset - 1)) return;
 
     ++currentRow_;
 
-    if (currentRow_ + yOffset_ + 1 > height_) {
-      if (yOffset_ > 0)
+    int screenRows = app_->screenRows();
+
+    int height = height_;
+    int row2   = row_ + height + 1;
+
+    if (row2 >= screenRows)
+      height = screenRows - row_ - 2;
+
+    if (currentRow_ + yOffset_ + 1 > height - headerOffset) {
+      if (yOffset_ > height - nr_ - headerOffset)
         --yOffset_;
     }
 
@@ -2356,7 +2553,7 @@ draw() const
   int focusColor = 5;
 
   if (hasFocus())
-    COSRead::write(STDOUT_FILENO, CEscape::SGR(30 + focusColor));
+    app_->fgIColor(focusColor);
   else
     app_->clearStyle();
 
@@ -2428,7 +2625,7 @@ draw() const
   int focusColor = 5;
 
   if (hasFocus())
-    COSRead::write(STDOUT_FILENO, CEscape::SGR(30 + focusColor));
+    app_->fgIColor(focusColor);
   else
     app_->clearStyle();
 
@@ -2454,9 +2651,9 @@ draw() const
     app_->moveTo(row_ + 1, col_ + 1 + i - dx);
 
     if (i == cursorPos_)
-      COSRead::write(STDOUT_FILENO, CEscape::SGR(43));
+      app_->bgIColor(3);
     else
-      COSRead::write(STDOUT_FILENO, CEscape::SGR(0));
+      app_->clearStyle();
 
     if (i < int(text_.length()))
       COSRead::write(STDOUT_FILENO, text_[i]);
@@ -2464,7 +2661,7 @@ draw() const
       COSRead::write(STDOUT_FILENO, " ");
   }
 
-  COSRead::write(STDOUT_FILENO, CEscape::SGR(0));
+  app_->clearStyle();
 }
 
 void
