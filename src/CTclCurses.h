@@ -141,7 +141,7 @@ class App {
 
   //---
 
-  int numWidgets() const { return widgets_.size(); }
+  int numWidgets() const { return int(widgets_.size()); }
 
   void addWidget(Widget *w);
 

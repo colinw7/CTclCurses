@@ -154,7 +154,7 @@ namespace {
     if (i < 0 || i >= int(colors.size()))
       return false;
 
-    nameToRgb(colors[i], r, g, b);
+    nameToRgb(colors[size_t(i)], r, g, b);
 
     return true;
   }
@@ -206,8 +206,8 @@ main(int argc, char **argv)
             continue;
           }
 
-          auto lhs = nameValue.substr(0, pos);
-          auto rhs = nameValue.substr(pos + 1);
+          auto lhs = nameValue.substr(0, size_t(pos));
+          auto rhs = nameValue.substr(size_t(pos + 1));
 
           nameValues[lhs] = rhs;
         }
@@ -328,41 +328,41 @@ init()
     return false;
 
   tcl_->createObjCommand("cls",
-    (Tcl::ObjCmdProc) &App::clsProc     , (Tcl::ObjCmdData) this);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::clsProc     ), static_cast<Tcl::ObjCmdData>(this));
   tcl_->createObjCommand("cll",
-    (Tcl::ObjCmdProc) &App::cllProc     , (Tcl::ObjCmdData) this);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::cllProc     ), static_cast<Tcl::ObjCmdData>(this));
   tcl_->createObjCommand("move",
-    (Tcl::ObjCmdProc) &App::moveProc    , (Tcl::ObjCmdData) this);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::moveProc    ), static_cast<Tcl::ObjCmdData>(this));
   tcl_->createObjCommand("style",
-    (Tcl::ObjCmdProc) &App::styleProc   , (Tcl::ObjCmdData) this);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::styleProc   ), static_cast<Tcl::ObjCmdData>(this));
   tcl_->createObjCommand("bgcolor",
-    (Tcl::ObjCmdProc) &App::bgColorProc , (Tcl::ObjCmdData) this);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::bgColorProc ), static_cast<Tcl::ObjCmdData>(this));
   tcl_->createObjCommand("fgcolor",
-    (Tcl::ObjCmdProc) &App::fgColorProc , (Tcl::ObjCmdData) this);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::fgColorProc ), static_cast<Tcl::ObjCmdData>(this));
   tcl_->createObjCommand("draw_box",
-    (Tcl::ObjCmdProc) &App::drawBoxProc , (Tcl::ObjCmdData) this);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::drawBoxProc ), static_cast<Tcl::ObjCmdData>(this));
   tcl_->createObjCommand("draw_text",
-    (Tcl::ObjCmdProc) &App::drawTextProc, (Tcl::ObjCmdData) this);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::drawTextProc), static_cast<Tcl::ObjCmdData>(this));
   tcl_->createObjCommand("tlabel",
-    (Tcl::ObjCmdProc) &App::labelProc   , (Tcl::ObjCmdData) this);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::labelProc   ), static_cast<Tcl::ObjCmdData>(this));
   tcl_->createObjCommand("tlist",
-    (Tcl::ObjCmdProc) &App::listProc    , (Tcl::ObjCmdData) this);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::listProc    ), static_cast<Tcl::ObjCmdData>(this));
   tcl_->createObjCommand("ttable",
-    (Tcl::ObjCmdProc) &App::tableProc   , (Tcl::ObjCmdData) this);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::tableProc   ), static_cast<Tcl::ObjCmdData>(this));
   tcl_->createObjCommand("tcheck",
-    (Tcl::ObjCmdProc) &App::checkProc   , (Tcl::ObjCmdData) this);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::checkProc   ), static_cast<Tcl::ObjCmdData>(this));
   tcl_->createObjCommand("tinput",
-    (Tcl::ObjCmdProc) &App::inputProc   , (Tcl::ObjCmdData) this);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::inputProc   ), static_cast<Tcl::ObjCmdData>(this));
   tcl_->createObjCommand("tbox",
-    (Tcl::ObjCmdProc) &App::boxProc     , (Tcl::ObjCmdData) this);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::boxProc     ), static_cast<Tcl::ObjCmdData>(this));
   tcl_->createObjCommand("winop",
-    (Tcl::ObjCmdProc) &App::winOpProc   , (Tcl::ObjCmdData) this);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::winOpProc   ), static_cast<Tcl::ObjCmdData>(this));
   tcl_->createObjCommand("ttystate",
-    (Tcl::ObjCmdProc) &App::ttyStateProc, (Tcl::ObjCmdData) this);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::ttyStateProc), static_cast<Tcl::ObjCmdData>(this));
   tcl_->createObjCommand("raw",
-    (Tcl::ObjCmdProc) &App::rawProc     , (Tcl::ObjCmdData) this);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::rawProc     ), static_cast<Tcl::ObjCmdData>(this));
   tcl_->createObjCommand("done",
-    (Tcl::ObjCmdProc) &App::doneProc    , (Tcl::ObjCmdData) this);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::doneProc    ), static_cast<Tcl::ObjCmdData>(this));
 
   tcl_->createAlias("echo" , "puts"   );
   tcl_->createAlias("color", "fgcolor");
@@ -694,7 +694,7 @@ labelProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
   auto *label = new Label(th, widgetName, row, col, text);
 
   th->tcl()->createObjCommand(widgetName,
-    (Tcl::ObjCmdProc) &App::labelWidgetProc, (Tcl::ObjCmdData) label);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::labelWidgetProc), static_cast<Tcl::ObjCmdData>(label));
 
   th->addWidget(label);
 
@@ -763,7 +763,7 @@ listProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
   auto *list = new List(th, widgetName, row, col, strs);
 
   th->tcl()->createObjCommand(widgetName,
-    (Tcl::ObjCmdProc) &App::listWidgetProc, (Tcl::ObjCmdData) list);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::listWidgetProc), static_cast<Tcl::ObjCmdData>(list));
 
   th->addWidget(list);
 
@@ -828,7 +828,7 @@ tableProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
   assert(th);
 
   auto args = th->getArgs(objc, objv);
-  int na = args.size();
+  int  na   = int(args.size());
 
   int         row    = 0;
   int         col    = 0;
@@ -841,14 +841,14 @@ tableProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
   StringList args1;
 
   for (int i = 0; i < na; ++i) {
-    if (args[i][0] == '-') {
-      auto arg1 = args[i].substr(1);
+    if (args[size_t(i)][0] == '-') {
+      auto arg1 = args[size_t(i)].substr(1);
 
       if      (arg1 == "rows") {
         ++i;
 
         if (i < na) {
-          data = args[i];
+          data = args[size_t(i)];
           rows = true;
         }
         else
@@ -858,7 +858,7 @@ tableProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
         ++i;
 
         if (i < na) {
-          data = args[i];
+          data = args[size_t(i)];
           rows = false;
         }
         else
@@ -868,7 +868,7 @@ tableProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
         ++i;
 
         if (i < na)
-          row = std::stoi(args[i]);
+          row = std::stoi(args[size_t(i)]);
         else
           return errMsg("Missing value for -row");
       }
@@ -876,7 +876,7 @@ tableProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
         ++i;
 
         if (i < na)
-          col = std::stoi(args[i]);
+          col = std::stoi(args[size_t(i)]);
         else
           return errMsg("Missing value for -col");
       }
@@ -884,7 +884,7 @@ tableProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
         ++i;
 
         if (i < na)
-          width = std::stoi(args[i]);
+          width = std::stoi(args[size_t(i)]);
         else
           return errMsg("Missing value for -width");
       }
@@ -892,7 +892,7 @@ tableProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
         ++i;
 
         if (i < na)
-          height = std::stoi(args[i]);
+          height = std::stoi(args[size_t(i)]);
         else
           return errMsg("Missing value for -height");
       }
@@ -900,10 +900,10 @@ tableProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
         header = true;
       }
       else
-        return errMsg("Invalid arg '" + args[i] + "'");
+        return errMsg("Invalid arg '" + args[size_t(i)] + "'");
     }
     else
-      args1.push_back(args[i]);
+      args1.push_back(args[size_t(i)]);
   }
 
   if (! args1.empty())
@@ -921,13 +921,13 @@ tableProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
   int     nr { 0 }, nc { 0 };
 
   if (! rows) {
-    nc = strs.size();
+    nc = int(strs.size());
     nr = 0;
 
     for (int c = 0; c < nc; ++c) {
       Tcl::StringList cstrs;
 
-      if (! th->tcl()->splitList(strs[c], cstrs))
+      if (! th->tcl()->splitList(strs[size_t(c)], cstrs))
         return TCL_ERROR;
 
       nr = std::max(nr, int(cstrs.size()));
@@ -936,8 +936,8 @@ tableProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
     }
 
     for (int c = 0; c < nc; ++c) {
-      while (int(colStrs[c].size()) < nr)
-        colStrs[c].push_back("");
+      while (int(colStrs[size_t(c)].size()) < nr)
+        colStrs[size_t(c)].push_back("");
     }
   }
   else {
@@ -945,13 +945,13 @@ tableProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 
     RowStrs rowStrs;
 
-    nr = strs.size();
+    nr = int(strs.size());
     nc = 0;
 
     for (int r = 0; r < nr; ++r) {
       Tcl::StringList rstrs;
 
-      if (! th->tcl()->splitList(strs[r], rstrs))
+      if (! th->tcl()->splitList(strs[size_t(r)], rstrs))
         return TCL_ERROR;
 
       nc = std::max(nc, int(rstrs.size()));
@@ -960,15 +960,15 @@ tableProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
     }
 
     for (int r = 0; r < nr; ++r) {
-      while (int(rowStrs[r].size()) < nc)
-        rowStrs[r].push_back("");
+      while (int(rowStrs[size_t(r)].size()) < nc)
+        rowStrs[size_t(r)].push_back("");
     }
 
     for (int c = 0; c < nc; ++c) {
       StringList cstrs;
 
       for (int r = 0; r < nr; ++r)
-        cstrs.push_back(rowStrs[r][c]);
+        cstrs.push_back(rowStrs[size_t(r)][size_t(c)]);
 
       colStrs.push_back(cstrs);
     }
@@ -987,7 +987,7 @@ tableProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
     table->setHeight(height);
 
   th->tcl()->createObjCommand(widgetName,
-    (Tcl::ObjCmdProc) &App::tableWidgetProc, (Tcl::ObjCmdData) table);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::tableWidgetProc), static_cast<Tcl::ObjCmdData>(table));
 
   th->addWidget(table);
 
@@ -1063,7 +1063,7 @@ checkProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
   auto *check = new Check(th, widgetName, row, col);
 
   th->tcl()->createObjCommand(widgetName,
-    (Tcl::ObjCmdProc) &App::checkWidgetProc, (Tcl::ObjCmdData) check);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::checkWidgetProc), static_cast<Tcl::ObjCmdData>(check));
 
   th->addWidget(check);
 
@@ -1127,7 +1127,7 @@ inputProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
   auto *input = new Input(th, widgetName, row, col);
 
   th->tcl()->createObjCommand(widgetName,
-    (Tcl::ObjCmdProc) &App::inputWidgetProc, (Tcl::ObjCmdData) input);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::inputWidgetProc), static_cast<Tcl::ObjCmdData>(input));
 
   th->addWidget(input);
 
@@ -1197,7 +1197,7 @@ boxProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
   auto *box = new Box(th, widgetName, row, col, w, h);
 
   th->tcl()->createObjCommand(widgetName,
-    (Tcl::ObjCmdProc) &App::boxWidgetProc, (Tcl::ObjCmdData) box);
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::boxWidgetProc), static_cast<Tcl::ObjCmdData>(box));
 
   th->addWidget(box);
 
@@ -1475,7 +1475,7 @@ getArgs(int objc, const Tcl_Obj **objv) const
   App::StringList args;
 
   for (int i = 1; i < objc; ++i)
-    args.push_back(CTclUtil::stringFromObj((Tcl_Obj *) objv[i]));
+    args.push_back(CTclUtil::stringFromObj(const_cast<Tcl_Obj *>(objv[size_t(i)])));
 
   return args;
 }
@@ -1499,7 +1499,7 @@ loop()
 
     if (! COSRead::read(STDIN_FILENO, buffer)) continue;
 
-    uint len = buffer.size();
+    uint len = uint(buffer.size());
 
     if (len == 0) continue;
 
@@ -1603,7 +1603,7 @@ processString(const std::string &str)
   inEscape_ = false;
 
   uint i   = 0;
-  uint len = str.size();
+  uint len = uint(str.size());
 
   //---
 
@@ -1660,7 +1660,7 @@ processString(const std::string &str)
   //---
 
   for (uint pos = 0; pos < len; ++pos) {
-    if (processStringChar(str[pos]))
+    if (processStringChar(static_cast<unsigned char>(str[size_t(pos)])))
       i = pos + 1;
 
     if (done_) return;
@@ -1668,7 +1668,7 @@ processString(const std::string &str)
 
   if (i < len) {
     for (uint pos = i; pos < len; ++pos) {
-      processChar(str[pos]);
+      processChar(static_cast<unsigned char>(str[size_t(pos)]));
 
       if (done_) return;
     }
@@ -1691,7 +1691,7 @@ processStringChar(unsigned char c)
   if (! inEscape_) {
     if (c == '\033') {
       inEscape_     = true;
-      escapeString_ = std::string((char *) &c, 1);
+      escapeString_ = std::string(reinterpret_cast<char *>(&c), 1);
       return false;
     }
 
@@ -1700,7 +1700,7 @@ processStringChar(unsigned char c)
     return true;
   }
   else {
-    escapeString_ += c;
+    escapeString_ += char(c);
 
     CStrParse parse(escapeString_);
 
@@ -1909,7 +1909,7 @@ processChar(unsigned char c)
   }
 
   if (c >= ' ' && c <= '}')
-    data.text = std::string((char *) &c, 1);
+    data.text = std::string(reinterpret_cast<char *>(&c), 1);
 
   keyPress(data);
 }
@@ -2158,9 +2158,9 @@ List(App *app, const std::string &name, int row, int col, const StringList &strs
   for (const auto &str : strs_)
     width_ = std::max(width_, int(str.size()));
 
-  height_ = strs_.size();
+  height_ = int(strs_.size());
 
-  n_ = strs_.size();
+  n_ = int(strs_.size());
 }
 
 void
@@ -2182,7 +2182,7 @@ currentText() const
   if (current_ < 0 || current_ >= int(strs_.size()))
     return "";
 
-  return strs_[current_];
+  return strs_[size_t(current_)];
 }
 
 void
@@ -2211,7 +2211,7 @@ draw() const
     if (y >= height_)
       break;
 
-    const auto &str = strs_[y - yOffset_];
+    const auto &str = strs_[size_t(y - yOffset_)];
 
     app_->moveTo(y + row_ + 1, col_ + 1);
 
@@ -2306,7 +2306,7 @@ Table(App *app, const std::string &name, int row, int col, int nr, int nc,
   for (int c = 0; c < nc; ++c) {
     colWidth_[c] = 0;
 
-    for (const auto &str : colStrs_[c])
+    for (const auto &str : colStrs_[size_t(c)])
       colWidth_[c] = std::max(colWidth_[c], int(str.size()));
   }
 
@@ -2339,7 +2339,7 @@ setItem(int r, int c, const std::string &text)
   if (r < 0 || r >= nr_ || c < 0 || c >= nc_)
     return;
 
-  colStrs_[c][r] = text;
+  colStrs_[size_t(c)][size_t(r)] = text;
 
   app_->redraw();
 }
@@ -2430,7 +2430,8 @@ draw() const
 
       x += 2;
 
-      const auto &str = (headerRow ? colStrs_[c][0] : colStrs_[c][y - yOffset_]);
+      const auto &str = (headerRow ?
+        colStrs_[size_t(c)][0] : colStrs_[size_t(c)][size_t(y - yOffset_)]);
 
       if (x + int(str.size()) + 1 > screenCols)
         break;
@@ -2634,7 +2635,7 @@ draw() const
   auto *th = const_cast<Input *>(this);
 
   if      (cursorPos_ < 0                  ) th->cursorPos_ = 0;
-  else if (cursorPos_ > int(text_.length())) th->cursorPos_ = text_.length();
+  else if (cursorPos_ > int(text_.length())) th->cursorPos_ = int(text_.length());
 
   int dx = 0;
 
@@ -2656,7 +2657,7 @@ draw() const
       app_->clearStyle();
 
     if (i < int(text_.length()))
-      COSRead::write(STDOUT_FILENO, text_[i]);
+      COSRead::write(STDOUT_FILENO, text_[size_t(i)]);
     else
       COSRead::write(STDOUT_FILENO, " ");
   }
@@ -2672,8 +2673,8 @@ keyPress(const KeyData &data)
     return;
 
   if      (data.text != "" && data.text.length() == 1) {
-    auto lhs = text_.substr(0, cursorPos_);
-    auto rhs = (cursorPos_ < int(text_.length()) ? text_.substr(cursorPos_) : "");
+    auto lhs = text_.substr(0, size_t(cursorPos_));
+    auto rhs = (cursorPos_ < int(text_.length()) ? text_.substr(size_t(cursorPos_)) : "");
 
     text_ = lhs + data.text + rhs;
 
@@ -2683,8 +2684,8 @@ keyPress(const KeyData &data)
   }
   else if (data.text == "backspace") {
     if (cursorPos_ > 0) {
-      auto lhs = text_.substr(0, cursorPos_ - 1);
-      auto rhs = (cursorPos_ < int(text_.length()) ? text_.substr(cursorPos_) : "");
+      auto lhs = text_.substr(0, size_t(cursorPos_ - 1));
+      auto rhs = (cursorPos_ < int(text_.length()) ? text_.substr(size_t(cursorPos_)) : "");
 
       text_ = lhs + rhs;
 
@@ -2695,8 +2696,8 @@ keyPress(const KeyData &data)
   }
   else if (data.text == "del" || data.text == "line_del") {
     if (cursorPos_ < int(text_.length())) {
-      auto lhs = text_.substr(0, cursorPos_);
-      auto rhs = (cursorPos_ + 1 < int(text_.length()) ? text_.substr(cursorPos_ + 1) : "");
+      auto lhs = text_.substr(0, size_t(cursorPos_));
+      auto rhs = (cursorPos_ + 1 < int(text_.length()) ? text_.substr(size_t(cursorPos_ + 1)) : "");
 
       text_ = lhs + rhs;
 
@@ -2705,7 +2706,7 @@ keyPress(const KeyData &data)
   }
   else if (data.text == "line_clear") {
     if (cursorPos_ < int(text_.length())) {
-      auto lhs = text_.substr(0, cursorPos_);
+      auto lhs = text_.substr(0, size_t(cursorPos_));
 
       text_ = lhs;
 
@@ -2794,7 +2795,7 @@ draw() const
     CRGBName::toRGBA(fill_, rgba);
 
     COSRead::write(STDOUT_FILENO,
-      CEscape::SGR_fg(rgba.getRedI(), rgba.getGreenI(), rgba.getBlueI()));
+      CEscape::SGR_fg(int(rgba.getRedI()), int(rgba.getGreenI()), int(rgba.getBlueI())));
 
     app_->fillBox(row_, col_, row_ + height_ - 1, col_ + width_ - 1);
   }
