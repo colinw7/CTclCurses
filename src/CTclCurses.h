@@ -40,7 +40,7 @@ class Tcl : public CTcl {
 
   void outputError(const std::string &msg) override;
 
-  void handleTrace(const char *name, int flags) override;
+  void handleRead(const char *name) override;
 
  private:
   App* app_ { nullptr };
@@ -128,7 +128,7 @@ class App {
 
   void outputError(const std::string &msg);
 
-  void handleTrace(const std::string &name, int flags);
+  void handleRead(const std::string &name);
 
   //---
 

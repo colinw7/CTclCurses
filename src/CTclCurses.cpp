@@ -14,7 +14,7 @@
 
 namespace {
   int hexStrToInt(const std::string &str) {
-    int i;
+    uint i;
     sscanf(str.c_str(), "%x", &i);
     return i;
   }
@@ -231,6 +231,7 @@ main(int argc, char **argv)
 
   app.setLoop  (loop);
   app.setPrompt(prompt);
+  app.setMouse (mouse);
 
   app.init();
 
@@ -285,9 +286,9 @@ outputError(const std::string &msg)
 
 void
 Tcl::
-handleTrace(const char *name, int flags)
+handleRead(const char *name)
 {
-  app_->handleTrace(name, flags);
+  app_->handleRead(name);
 }
 
 //---
@@ -1367,7 +1368,7 @@ winOpProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
     COSRead::write(STDOUT_FILENO, CEscape::oscWindowProp(args[1]));
   }
   else
-    TCL_ERROR;
+    return TCL_ERROR;
 
   return TCL_OK;
 }
@@ -1775,38 +1776,38 @@ processChar(unsigned char c)
   KeyData data;
 
   switch (c) {
-    case 0     : { data.type = CKEY_TYPE_NUL         ; break; }
-    case ''  : { data.type = CKEY_TYPE_SOH         ; data.text = "line_begin"; break; }
-    case ''  : { data.type = CKEY_TYPE_STX         ; data.text = "line_left" ; break; }
-    case ''  : { data.type = CKEY_TYPE_ETX         ; data.text = "cancel"    ; break; }
-    case ''  : { data.type = CKEY_TYPE_EOT         ; data.text = "line_del"  ; break; }
-    case ''  : { data.type = CKEY_TYPE_ENQ         ; data.text = "line_end"  ; break; }
-    case ''  : { data.type = CKEY_TYPE_ACK         ; data.text = "line_right"; break; }
-    case ''  : { data.type = CKEY_TYPE_BEL         ; data.text = "bell"      ; break; }
-    case ''  : { data.type = CKEY_TYPE_BackSpace   ; data.text = "backspace" ; break; }
-    case '\011': { data.type = CKEY_TYPE_TAB         ; data.text = "tab"       ; break; }
-    case '\012': { data.type = CKEY_TYPE_LineFeed    ; data.text = "lf"        ; break; }
-    case ''  : { data.type = CKEY_TYPE_Clear       ; data.text = "line_clear"; break; }
-    case ''  : { data.type = CKEY_TYPE_FF          ; data.text = "ff"        ; break; }
-    case '\015': { data.type = CKEY_TYPE_Return      ; data.text = "return"    ; break; }
-    case ''  : { data.type = CKEY_TYPE_SO          ; break; }
-    case ''  : { data.type = CKEY_TYPE_SI          ; break; }
-    case ''  : { data.type = CKEY_TYPE_DLE         ; break; }
-    case '\021': { data.type = CKEY_TYPE_DC1         ; break; }
-    case ''  : { data.type = CKEY_TYPE_DC2         ; break; }
-    case '\023': { data.type = CKEY_TYPE_Pause       ; break; }
-    case ''  : { data.type = CKEY_TYPE_Scroll_Lock ; break; }
-    case ''  : { data.type = CKEY_TYPE_Sys_Req     ; break; }
-    case ''  : { data.type = CKEY_TYPE_SYN         ; break; }
-    case ''  : { data.type = CKEY_TYPE_ETB         ; break; }
-    case ''  : { data.type = CKEY_TYPE_CAN         ; break; }
-    case ''  : { data.type = CKEY_TYPE_EM          ; break; }
-    case ''  : { data.type = CKEY_TYPE_SUB         ; break; }
-    case '\033': { data.type = CKEY_TYPE_Escape      ; data.text = "escape"; break; }
-    case '\034': { data.type = CKEY_TYPE_FS          ; break; }
-    case '\035': { data.type = CKEY_TYPE_GS          ; break; }
-    case '\036': { data.type = CKEY_TYPE_RS          ; break; }
-    case '\037': { data.type = CKEY_TYPE_US          ; break; }
+    case 0     : { data.type = CKEY_TYPE_NUL        ; break; }
+    case ''  : { data.type = CKEY_TYPE_SOH        ; data.text = "line_begin"    ; break; }
+    case ''  : { data.type = CKEY_TYPE_STX        ; data.text = "line_left"     ; break; }
+    case ''  : { data.type = CKEY_TYPE_ETX        ; data.text = "cancel"        ; break; }
+    case ''  : { data.type = CKEY_TYPE_EOT        ; data.text = "line_del"      ; break; }
+    case ''  : { data.type = CKEY_TYPE_ENQ        ; data.text = "line_end"      ; break; }
+    case ''  : { data.type = CKEY_TYPE_ACK        ; data.text = "line_right"    ; break; }
+    case ''  : { data.type = CKEY_TYPE_BEL        ; data.text = "bell"          ; break; }
+    case ''  : { data.type = CKEY_TYPE_BackSpace  ; data.text = "backspace"     ; break; }
+    case '\011': { data.type = CKEY_TYPE_TAB        ; data.text = "tab"           ; break; }
+    case '\012': { data.type = CKEY_TYPE_LineFeed   ; data.text = "lf"            ; break; }
+    case ''  : { data.type = CKEY_TYPE_Clear      ; data.text = "line_clear_end"; break; }
+    case ''  : { data.type = CKEY_TYPE_FF         ; data.text = "ff"            ; break; }
+    case '\015': { data.type = CKEY_TYPE_Return     ; data.text = "return"        ; break; }
+    case ''  : { data.type = CKEY_TYPE_SO         ; data.text = "next"          ; break; }
+    case ''  : { data.type = CKEY_TYPE_SI         ; break; }
+    case ''  : { data.type = CKEY_TYPE_DLE        ; data.text = "previous"      ; break; }
+    case '\021': { data.type = CKEY_TYPE_DC1        ; data.text = "start"         ; break; }
+    case ''  : { data.type = CKEY_TYPE_DC2        ; data.text = "search"        ; break; }
+    case '\023': { data.type = CKEY_TYPE_Pause      ; data.text = "stop"          ; break; }
+    case ''  : { data.type = CKEY_TYPE_Scroll_Lock; data.text = "transpose"     ; break; }
+    case ''  : { data.type = CKEY_TYPE_Sys_Req    ; data.text = "line_clear"    ; break; }
+    case ''  : { data.type = CKEY_TYPE_SYN        ; data.text = "paste"         ; break; }
+    case ''  : { data.type = CKEY_TYPE_ETB        ; data.text = "delete_word"   ; break; }
+    case ''  : { data.type = CKEY_TYPE_CAN        ; data.text = "cursor_prev"   ; break; }
+    case ''  : { data.type = CKEY_TYPE_EM         ; data.text = "redo"          ; break; }
+    case ''  : { data.type = CKEY_TYPE_SUB        ; data.text = "undo"          ; break; }
+    case '\033': { data.type = CKEY_TYPE_Escape     ; data.text = "escape"        ; break; } // [
+    case '\034': { data.type = CKEY_TYPE_FS         ; data.text = "kill"          ; break; } /* \ */
+    case '\035': { data.type = CKEY_TYPE_GS         ;                               break; } // ]
+    case '\036': { data.type = CKEY_TYPE_RS         ;                               break; } // ^
+    case '\037': { data.type = CKEY_TYPE_US         ;                               break; } // _
 
     // auto named ' ' to '}'
     case ' '   : { data.type = CKEY_TYPE_Space       ; break; }
@@ -1945,7 +1946,7 @@ keyPress(const KeyData &data)
 
     redraw();
   }
-  else if (data.text == "escape") {
+  else if (data.text == "escape" || data.text == "cancel") {
     setDone(true);
 
     return;
@@ -2064,7 +2065,7 @@ outputError(const std::string &msg)
 
 void
 App::
-handleTrace(const std::string &name, int /*flags*/)
+handleRead(const std::string &name)
 {
   if      (name == "window_pos" || name == "::window_pos")
     updateWindowPos();
