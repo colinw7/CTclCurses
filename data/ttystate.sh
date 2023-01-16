@@ -1,0 +1,1 @@
+CTclCurses ttystate.tcl -loop

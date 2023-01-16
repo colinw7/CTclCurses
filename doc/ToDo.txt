@@ -7,3 +7,4 @@
 + more commands
 + support menu (current size and scrollbar)
 + infrastructure for menu builtin
++ multi-column output
