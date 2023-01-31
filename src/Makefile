@@ -29,6 +29,7 @@ CPPFLAGS = \
 -I. \
 -I../../CReadLine/include \
 -I../../CHistory/include \
+-I../../CImageLib/include \
 -I../../CFile/include \
 -I../../CStrParse/include \
 -I../../CMath/include \
@@ -39,18 +40,25 @@ CPPFLAGS = \
 
 LFLAGS = \
 -L../../CReadLine/lib \
+-L../../CImageLib/lib \
 -L../../CFile/lib \
+-L../../CFileUtil/lib \
 -L../../CRGBName/lib \
 -L../../CMath/lib \
 -L../../CStrUtil/lib \
+-L../../CRegExp/lib \
 -L../../COS/lib \
 -lCReadLine \
+-lCImageLib \
 -lCFile \
+-lCFileUtil \
 -lCRGBName \
 -lCMath \
 -lCStrUtil \
+-lCRegExp \
 -lCOS \
--ltcl -lreadline -lcurses
+-ltcl -lreadline -lcurses \
+-ljpeg -lpng -ltre
 
 clean:
 	$(RM) -f $(OBJ_DIR)/*.o

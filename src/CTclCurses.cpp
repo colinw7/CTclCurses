@@ -1,5 +1,6 @@
 #include <CTclCurses.h>
 #include <CReadLine.h>
+#include <CImageLib.h>
 #include <CStrParse.h>
 #include <CStrUtil.h>
 #include <COSPty.h>
@@ -356,6 +357,8 @@ init()
     reinterpret_cast<Tcl::ObjCmdProc>(&App::inputProc   ), static_cast<Tcl::ObjCmdData>(this));
   tcl_->createObjCommand("tbox",
     reinterpret_cast<Tcl::ObjCmdProc>(&App::boxProc     ), static_cast<Tcl::ObjCmdData>(this));
+  tcl_->createObjCommand("timage",
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::imageProc   ), static_cast<Tcl::ObjCmdData>(this));
   tcl_->createObjCommand("winop",
     reinterpret_cast<Tcl::ObjCmdProc>(&App::winOpProc   ), static_cast<Tcl::ObjCmdData>(this));
   tcl_->createObjCommand("ttystate",
@@ -1274,6 +1277,81 @@ boxWidgetProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 
 int
 App::
+imageProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
+{
+  auto *th = static_cast<App *>(clientData);
+  assert(th);
+
+  auto args = th->getArgs(objc, objv);
+  if (args.size() != 5) return TCL_ERROR;
+
+  int  row  = std::stoi(args[0]);
+  int  col  = std::stoi(args[1]);
+  int  w    = std::stoi(args[2]);
+  int  h    = std::stoi(args[3]);
+  auto file = args[4];
+
+  auto widgetName = "tbox." + std::to_string(th->numWidgets() + 1);
+
+  auto *image = new Image(th, widgetName, row, col, w, h, file);
+
+  th->tcl()->createObjCommand(widgetName,
+    reinterpret_cast<Tcl::ObjCmdProc>(&App::imageWidgetProc), static_cast<Tcl::ObjCmdData>(image));
+
+  th->addWidget(image);
+
+  th->redraw();
+
+  th->tcl()->setResult(widgetName);
+
+  return TCL_OK;
+}
+
+int
+App::
+imageWidgetProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
+{
+  auto *image = static_cast<Image *>(clientData);
+  assert(image);
+
+  auto args = image->app()->getArgs(objc, objv);
+  if (args.size() < 1) return TCL_ERROR;
+
+  if       (args[0] == "get") {
+    if (args.size() < 2) return TCL_ERROR;
+
+    if      (args[1] == "width")
+      image->app()->tcl()->setResult(image->width());
+    else if (args[1] == "height")
+      image->app()->tcl()->setResult(image->height());
+    else if (args[1] == "file")
+      image->app()->tcl()->setResult(image->file());
+    else
+      return TCL_ERROR;
+  }
+  else if (args[0] == "set") {
+    if (args.size() < 3) return TCL_ERROR;
+
+    if      (args[1] == "width")
+      image->setWidth(std::stoi(args[2]));
+    else if (args[1] == "height")
+      image->setHeight(std::stoi(args[2]));
+    else if (args[1] == "file")
+      image->setFile(args[2]);
+    else
+      return TCL_ERROR;
+  }
+  else {
+    return TCL_ERROR;
+  }
+
+  return TCL_OK;
+}
+
+//---
+
+int
+App::
 drawBoxProc(void *clientData, Tcl_Interp *, int objc, const Tcl_Obj **objv)
 {
   auto *th = static_cast<App *>(clientData);
@@ -2026,6 +2104,39 @@ drawString(int row, int col, const std::string &s) const
   moveTo(row, col);
 
   COSRead::write(STDOUT_FILENO, s);
+}
+
+void
+App::
+drawImage(int r1, int c1, int r2, int c2, const CImagePtr &image) const
+{
+  int ih = image->getHeight();
+  int ix = 0;
+
+  for (int c = c1; c <= c2; ++c, ++ix) {
+    int iy = 0;
+
+    for (int r = r1; r <= r2; ++r, iy += 2) {
+      uint ir1, ig1, ib1, ia1;
+      image->getRGBAPixelI(ix, iy, &ir1, &ig1, &ib1, &ia1);
+
+      uint ir2 = 0, ig2 = 0, ib2 = 0, ia2 = 255;
+      if (iy < ih)
+        image->getRGBAPixelI(ix, iy + 1, &ir2, &ig2, &ib2, &ia2);
+
+      if (ia1 > 0)
+        COSRead::write(STDOUT_FILENO, CEscape::SGR_bg(ir1, ig1, ib1));
+      else
+        COSRead::write(STDOUT_FILENO, CEscape::SGR_bg(0, 0, 0));
+
+      if (ia2 > 0)
+        COSRead::write(STDOUT_FILENO, CEscape::SGR_fg(ir2, ig2, ib2));
+      else
+        COSRead::write(STDOUT_FILENO, CEscape::SGR_fg(0, 0, 0));
+
+      drawString(r, c, "\u2584" /*▄*/);
+    }
+  }
 }
 
 void
@@ -2802,6 +2913,72 @@ draw() const
   }
 
   app_->clearStyle();
+}
+
+//---
+
+Image::
+Image(App *app, const std::string &name, int row, int col, int width, int height,
+      const std::string &file) :
+ Widget(app, name), row_(row), col_(col), width_(width), height_(height), file_(file)
+{
+  updateImage();
+}
+
+Image::
+~Image()
+{
+}
+
+void
+Image::
+setWidth(int i)
+{
+  width_ = i;
+
+  updateImage();
+
+  app_->redraw();
+}
+
+void
+Image::
+setHeight(int i)
+{
+  height_ = i;
+
+  updateImage();
+
+  app_->redraw();
+}
+
+void
+Image::
+setFile(const std::string &s)
+{
+  file_ = s;
+
+  updateImage();
+
+  app_->redraw();
+}
+
+void
+Image::
+draw() const
+{
+  app_->drawImage(row_, col_, row_ + height_ - 1, col_ + width_ - 1, image_);
+}
+
+void
+Image::
+updateImage()
+{
+  CImageFileSrc src(file_);
+
+  image_ = CImageMgrInst->createImage(src);
+
+  image_ = image_->resize(width_, height_*2);
 }
 
 //------

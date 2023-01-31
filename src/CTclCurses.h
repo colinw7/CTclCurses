@@ -3,6 +3,8 @@
 
 #include <CTclUtil.h>
 #include <CKeyType.h>
+#include <CImagePtr.h>
+
 #include <string>
 #include <vector>
 #include <map>
@@ -121,6 +123,8 @@ class App {
   void drawBox(int r1, int c1, int r2, int c2) const;
   void fillBox(int r1, int c1, int r2, int c2) const;
 
+  void drawImage(int r1, int c1, int r2, int c2, const CImagePtr &image) const;
+
   void drawChar  (int row, int col, char c) const;
   void drawString(int row, int col, const std::string &s) const;
 
@@ -166,6 +170,8 @@ class App {
   static int inputWidgetProc(void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int boxProc        (void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int boxWidgetProc  (void *, Tcl_Interp *, int, const Tcl_Obj **);
+  static int imageProc      (void *, Tcl_Interp *, int, const Tcl_Obj **);
+  static int imageWidgetProc(void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int winOpProc      (void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int ttyStateProc   (void *, Tcl_Interp *, int, const Tcl_Obj **);
   static int rawProc        (void *, Tcl_Interp *, int, const Tcl_Obj **);
@@ -483,6 +489,53 @@ class Box : public Widget {
   int         width_  { 1 };
   int         height_ { 1 };
   std::string fill_;
+};
+
+//---
+
+class Image : public Widget {
+ public:
+  using StringList = std::vector<std::string>;
+
+ public:
+  Image(App *app, const std::string &name, int row, int col, int width, int height,
+        const std::string &file);
+
+ ~Image();
+
+  bool canFocus() const override { return true; }
+
+  //---
+
+  int row() const { return row_; }
+  void setRow(int i) { row_ = i; }
+
+  int col() const { return col_; }
+  void setCol(int i) { col_ = i; }
+
+  int width() const { return width_; }
+  void setWidth(int i);
+
+  int height() const { return height_; }
+  void setHeight(int i);
+
+  const std::string &file() const { return file_; }
+  void setFile(const std::string &s);
+
+  //---
+
+  void draw() const override;
+
+ private:
+  void updateImage();
+
+ private:
+  int         row_    { 0 };
+  int         col_    { 0 };
+  int         width_  { 1 };
+  int         height_ { 1 };
+  std::string file_;
+  CImagePtr   image_;
 };
 
 }
