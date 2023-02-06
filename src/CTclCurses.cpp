@@ -396,6 +396,8 @@ init()
 
   tcl_->eval("proc redrawProc { } { }", res, /*showError*/true);
   tcl_->eval("proc keyPressProc { args } { }", res, /*showError*/true);
+  tcl_->eval("proc mousePressProc { args } { }", res, /*showError*/true);
+  tcl_->eval("proc mouseReleaseProc { args } { }", res, /*showError*/true);
 
   //---
 
@@ -1686,7 +1688,6 @@ processString(const std::string &str)
 
   //---
 
-#if 0
   static int pressButton = 0;
 
   // process mouse (only if mouse enabled ?)
@@ -1714,21 +1715,26 @@ processString(const std::string &str)
     CIPoint2D pos(x1, y1);
 
     if (! release) {
-      CMouseEvent event(pos, (CMouseButton) (button + 1));
+      //CMouseEvent event(pos, (CMouseButton) (button + 1));
 
-      mousePress(event);
+      //mousePress(event);
+      MouseData data;
+      data.button = button;
+      mousePress(data);
 
       pressButton = button;
     }
     else {
-      CMouseEvent event(pos, (CMouseButton) (pressButton + 1));
+      //CMouseEvent event(pos, (CMouseButton) (pressButton + 1));
 
-      mouseRelease(event);
+      //mouseRelease(event);
+      MouseData data;
+      data.button = pressButton;
+      mouseRelease(data);
     }
 
     return;
   }
-#endif
 
   //---
 
@@ -2037,6 +2043,24 @@ keyPress(const KeyData &data)
 
   tcl_->eval("keyPressProc " + std::to_string(int(data.type)) + " {" + data.text + "}",
               res, /*showError*/true);
+}
+
+void
+App::
+mousePress(const MouseData &)
+{
+  std::string res;
+
+  tcl_->eval("mousePressProc", res, /*showError*/true);
+}
+
+void
+App::
+mouseRelease(const MouseData &)
+{
+  std::string res;
+
+  tcl_->eval("mouseReleaseProc", res, /*showError*/true);
 }
 
 //---

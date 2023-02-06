@@ -28,6 +28,7 @@ struct KeyData {
 };
 
 struct MouseData {
+  int button { 0 };
 };
 
 //---
@@ -108,8 +109,8 @@ class App {
 
   void keyPress(const KeyData &);
 
-  void mousePress  (const MouseData &) { }
-  void mouseRelease(const MouseData &) { }
+  void mousePress  (const MouseData &);
+  void mouseRelease(const MouseData &);
 
   //---
 
